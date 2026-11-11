@@ -14,7 +14,24 @@ phone's home screen as a web app.
 - [ ] Phase 4: search
 - [ ] Phase 5: polish and CSV export
 
-## Setup
+## Quick start (no database)
+
+You can run the app without any database. When no Supabase keys are set, it
+starts in **local mode**: there is no sign-in, and your data is saved in the
+browser on that device.
+
+```bash
+npm install
+npm run dev
+```
+
+Open http://localhost:3000. A yellow "Local mode" box confirms it. Local data
+stays in that one browser, so clearing site data deletes it.
+
+To force local mode even when keys are set, add `NEXT_PUBLIC_LOCAL_MODE=true`
+to `.env.local`.
+
+## Setup with Supabase (sync across devices)
 
 ### 1. Create a Supabase project
 
@@ -68,3 +85,4 @@ only see their own data.
 | `npm run build` | Production build |
 | `npm run lint` | Lint |
 | `npm run typecheck` | Type check |
+| `npm test` | Unit tests |

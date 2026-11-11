@@ -1,0 +1,425 @@
+// Browser storage version of the database, used in local mode.
+// It enforces the same rules as supabase/migrations/20261110000000_init.sql:
+//   - raw cards with the same name, number, game, language and condition in
+//     one folder share one entry
+//   - a slab's cert number is unique within a folder
+//   - you cannot sell more copies than you bought
+//   - deleting a folder deletes its cards; deleting a card deletes its
+//     purchases and sales
+
+import {
+  CONDITIONS,
+  GRADING_COMPANIES,
+  type Card,
+  type CardSummary,
+  type Folder,
+  type NewCard,
+  type NewFolder,
+  type NewPurchase,
+  type NewSale,
+  type Purchase,
+  type Sale,
+} from "./types";
+
+export const STORAGE_KEY = "t-rack-cg:data:v1";
+
+export type KeyValueStorage = Pick<Storage, "getItem" | "setItem">;
+
+interface Data {
+  folders: Folder[];
+  cards: Card[];
+  purchases: Purchase[];
+  sales: Sale[];
+}
+
+export class LocalStoreError extends Error {}
+
+const emptyData = (): Data => ({ folders: [], cards: [], purchases: [], sales: [] });
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+const norm = (s: string) => s.trim().toLowerCase();
+
+function requireText(value: string, field: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) throw new LocalStoreError(`${field} is required`);
+  return trimmed;
+}
+
+function requireNonNegative(value: number, field: string) {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new LocalStoreError(`${field} must be 0 or more`);
+  }
+}
+
+function requirePositiveInt(value: number, field: string) {
+  if (!Number.isInteger(value) || value < 1) {
+    throw new LocalStoreError(`${field} must be a whole number of 1 or more`);
+  }
+}
+
+function requireDate(value: string, field: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new LocalStoreError(`${field} must be a date like 2026-01-31`);
+  }
+}
+
+export class LocalStore {
+  constructor(
+    private storage: KeyValueStorage,
+    private now: () => Date = () => new Date(),
+    private newId: () => string = () => crypto.randomUUID(),
+  ) {}
+
+  // ---- storage ------------------------------------------------------------
+
+  private load(): Data {
+    const raw = this.storage.getItem(STORAGE_KEY);
+    if (!raw) return emptyData();
+    try {
+      return { ...emptyData(), ...(JSON.parse(raw) as Partial<Data>) };
+    } catch {
+      return emptyData();
+    }
+  }
+
+  private save(data: Data) {
+    this.storage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+
+  private stamp() {
+    const t = this.now().toISOString();
+    return { created_at: t, updated_at: t };
+  }
+
+  // ---- folders ------------------------------------------------------------
+
+  listFolders(): Folder[] {
+    return [...this.load().folders].sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  createFolder(input: NewFolder): Folder {
+    const data = this.load();
+    const folder: Folder = {
+      id: this.newId(),
+      name: requireText(input.name, "Folder name"),
+      description: input.description?.trim() || null,
+      ...this.stamp(),
+    };
+    data.folders.push(folder);
+    this.save(data);
+    return folder;
+  }
+
+  updateFolder(id: string, changes: Partial<NewFolder>): Folder {
+    const data = this.load();
+    const folder = data.folders.find((f) => f.id === id);
+    if (!folder) throw new LocalStoreError("Folder not found");
+    if (changes.name !== undefined) folder.name = requireText(changes.name, "Folder name");
+    if (changes.description !== undefined) {
+      folder.description = changes.description?.trim() || null;
+    }
+    folder.updated_at = this.now().toISOString();
+    this.save(data);
+    return folder;
+  }
+
+  deleteFolder(id: string) {
+    const data = this.load();
+    const cardIds = new Set(data.cards.filter((c) => c.folder_id === id).map((c) => c.id));
+    data.folders = data.folders.filter((f) => f.id !== id);
+    data.cards = data.cards.filter((c) => !cardIds.has(c.id));
+    data.purchases = data.purchases.filter((p) => !cardIds.has(p.card_id));
+    data.sales = data.sales.filter((s) => !cardIds.has(s.card_id));
+    this.save(data);
+  }
+
+  // ---- cards --------------------------------------------------------------
+
+  private validateCard(data: Data, card: Card) {
+    if (!data.folders.some((f) => f.id === card.folder_id)) {
+      throw new LocalStoreError("Folder not found");
+    }
+    if (card.type === "raw") {
+      if (!card.condition || !CONDITIONS.includes(card.condition)) {
+        throw new LocalStoreError("Raw cards need a condition");
+      }
+      const dupe = data.cards.find(
+        (c) =>
+          c.id !== card.id &&
+          c.type === "raw" &&
+          c.folder_id === card.folder_id &&
+          norm(c.name) === norm(card.name) &&
+          norm(c.card_number) === norm(card.card_number) &&
+          c.game === card.game &&
+          c.language === card.language &&
+          c.condition === card.condition,
+      );
+      if (dupe) {
+        throw new LocalStoreError(
+          "This folder already has this card in that condition",
+        );
+      }
+    } else {
+      if (!card.grading_company || !GRADING_COMPANIES.includes(card.grading_company)) {
+        throw new LocalStoreError("Slabs need a grading company");
+      }
+      if (card.grade === null || !(card.grade >= 1 && card.grade <= 10)) {
+        throw new LocalStoreError("Grade must be between 1 and 10");
+      }
+      requireText(card.cert_number ?? "", "Cert number");
+      const dupe = data.cards.find(
+        (c) =>
+          c.id !== card.id &&
+          c.type === "slab" &&
+          c.folder_id === card.folder_id &&
+          c.grading_company === card.grading_company &&
+          c.cert_number === card.cert_number,
+      );
+      if (dupe) {
+        throw new LocalStoreError("This folder already has a slab with that cert number");
+      }
+    }
+  }
+
+  /**
+   * Adds a card to a folder. A raw card that matches an existing entry (same
+   * name, number and condition in the same folder) returns that entry instead,
+   * so its purchases add to the same quantity.
+   */
+  addCard(input: NewCard): Card {
+    const data = this.load();
+    const base = {
+      id: this.newId(),
+      folder_id: input.folder_id,
+      type: input.type,
+      name: requireText(input.name, "Card name"),
+      card_number: requireText(input.card_number, "Card number"),
+      game: "Pokemon",
+      language: "English",
+      ...this.stamp(),
+    };
+    const card: Card =
+      input.type === "raw"
+        ? { ...base, condition: input.condition, grading_company: null, grade: null, cert_number: null }
+        : {
+            ...base,
+            condition: null,
+            grading_company: input.grading_company,
+            grade: input.grade,
+            cert_number: input.cert_number.trim(),
+          };
+
+    if (card.type === "raw") {
+      const existing = data.cards.find(
+        (c) =>
+          c.type === "raw" &&
+          c.folder_id === card.folder_id &&
+          norm(c.name) === norm(card.name) &&
+          norm(c.card_number) === norm(card.card_number) &&
+          c.game === card.game &&
+          c.language === card.language &&
+          c.condition === card.condition,
+      );
+      if (existing) return existing;
+    }
+
+    this.validateCard(data, card);
+    data.cards.push(card);
+    this.save(data);
+    return card;
+  }
+
+  updateCard(
+    id: string,
+    changes: Partial<
+      Pick<Card, "folder_id" | "name" | "card_number" | "condition" | "grading_company" | "grade" | "cert_number">
+    >,
+  ): Card {
+    const data = this.load();
+    const index = data.cards.findIndex((c) => c.id === id);
+    if (index < 0) throw new LocalStoreError("Card not found");
+    const updated: Card = {
+      ...data.cards[index],
+      ...changes,
+      updated_at: this.now().toISOString(),
+    };
+    updated.name = requireText(updated.name, "Card name");
+    updated.card_number = requireText(updated.card_number, "Card number");
+    if (updated.type === "raw") {
+      updated.grading_company = null;
+      updated.grade = null;
+      updated.cert_number = null;
+    } else {
+      updated.condition = null;
+      updated.cert_number = updated.cert_number?.trim() ?? null;
+    }
+    this.validateCard(data, updated);
+    data.cards[index] = updated;
+    this.save(data);
+    return updated;
+  }
+
+  deleteCard(id: string) {
+    const data = this.load();
+    data.cards = data.cards.filter((c) => c.id !== id);
+    data.purchases = data.purchases.filter((p) => p.card_id !== id);
+    data.sales = data.sales.filter((s) => s.card_id !== id);
+    this.save(data);
+  }
+
+  // ---- purchases and sales ------------------------------------------------
+
+  private checkOwned(data: Data, cardId: string) {
+    const bought = data.purchases
+      .filter((p) => p.card_id === cardId)
+      .reduce((n, p) => n + p.quantity, 0);
+    const sold = data.sales
+      .filter((s) => s.card_id === cardId)
+      .reduce((n, s) => n + s.sell_quantity, 0);
+    if (sold > bought) {
+      throw new LocalStoreError(`Cannot sell ${sold} copies; only ${bought} bought`);
+    }
+  }
+
+  private validatePurchase(data: Data, p: NewPurchase) {
+    if (!data.cards.some((c) => c.id === p.card_id)) throw new LocalStoreError("Card not found");
+    requireDate(p.buy_date, "Buy date");
+    requireNonNegative(p.buy_price, "Buy price");
+    requireNonNegative(p.buy_percentage, "Buy percentage");
+    requirePositiveInt(p.quantity, "Quantity");
+  }
+
+  private validateSale(data: Data, s: NewSale) {
+    if (!data.cards.some((c) => c.id === s.card_id)) throw new LocalStoreError("Card not found");
+    requireDate(s.sell_date, "Sell date");
+    requireNonNegative(s.sell_price, "Sell price");
+    requireNonNegative(s.sell_percentage, "Sell percentage");
+    requirePositiveInt(s.sell_quantity, "Sell quantity");
+  }
+
+  listPurchases(cardId: string): Purchase[] {
+    return this.load()
+      .purchases.filter((p) => p.card_id === cardId)
+      .sort((a, b) => b.buy_date.localeCompare(a.buy_date));
+  }
+
+  addPurchase(input: NewPurchase): Purchase {
+    const data = this.load();
+    this.validatePurchase(data, input);
+    const purchase: Purchase = { id: this.newId(), ...input, ...this.stamp() };
+    data.purchases.push(purchase);
+    this.save(data);
+    return purchase;
+  }
+
+  updatePurchase(id: string, changes: Partial<Omit<NewPurchase, "card_id">>): Purchase {
+    const data = this.load();
+    const index = data.purchases.findIndex((p) => p.id === id);
+    if (index < 0) throw new LocalStoreError("Purchase not found");
+    const updated = { ...data.purchases[index], ...changes, updated_at: this.now().toISOString() };
+    this.validatePurchase(data, updated);
+    data.purchases[index] = updated;
+    this.checkOwned(data, updated.card_id);
+    this.save(data);
+    return updated;
+  }
+
+  deletePurchase(id: string) {
+    const data = this.load();
+    const purchase = data.purchases.find((p) => p.id === id);
+    if (!purchase) return;
+    data.purchases = data.purchases.filter((p) => p.id !== id);
+    this.checkOwned(data, purchase.card_id);
+    this.save(data);
+  }
+
+  listSales(cardId: string): Sale[] {
+    return this.load()
+      .sales.filter((s) => s.card_id === cardId)
+      .sort((a, b) => b.sell_date.localeCompare(a.sell_date));
+  }
+
+  addSale(input: NewSale): Sale {
+    const data = this.load();
+    this.validateSale(data, input);
+    const sale: Sale = { id: this.newId(), ...input, ...this.stamp() };
+    data.sales.push(sale);
+    this.checkOwned(data, sale.card_id);
+    this.save(data);
+    return sale;
+  }
+
+  updateSale(id: string, changes: Partial<Omit<NewSale, "card_id">>): Sale {
+    const data = this.load();
+    const index = data.sales.findIndex((s) => s.id === id);
+    if (index < 0) throw new LocalStoreError("Sale not found");
+    const updated = { ...data.sales[index], ...changes, updated_at: this.now().toISOString() };
+    this.validateSale(data, updated);
+    data.sales[index] = updated;
+    this.checkOwned(data, updated.card_id);
+    this.save(data);
+    return updated;
+  }
+
+  deleteSale(id: string) {
+    const data = this.load();
+    data.sales = data.sales.filter((s) => s.id !== id);
+    this.save(data);
+  }
+
+  // ---- totals and search --------------------------------------------------
+
+  /** Same numbers as the card_summary view in the database. */
+  listCardSummaries(folderId?: string): CardSummary[] {
+    const data = this.load();
+    return data.cards
+      .filter((c) => !folderId || c.folder_id === folderId)
+      .map((card) => summarize(card, data.purchases, data.sales))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  /** Finds cards whose name, card number or cert number contains the text. */
+  searchCards(query: string): CardSummary[] {
+    const q = norm(query);
+    if (!q) return this.listCardSummaries();
+    return this.listCardSummaries().filter(
+      (c) =>
+        norm(c.name).includes(q) ||
+        norm(c.card_number).includes(q) ||
+        (c.cert_number ? norm(c.cert_number).includes(q) : false),
+    );
+  }
+}
+
+export function summarize(card: Card, purchases: Purchase[], sales: Sale[]): CardSummary {
+  let copiesBought = 0;
+  let totalCost = 0;
+  for (const p of purchases) {
+    if (p.card_id !== card.id) continue;
+    copiesBought += p.quantity;
+    totalCost += (p.quantity * p.buy_price * p.buy_percentage) / 100;
+  }
+  let copiesSold = 0;
+  let totalReceived = 0;
+  for (const s of sales) {
+    if (s.card_id !== card.id) continue;
+    copiesSold += s.sell_quantity;
+    totalReceived += (s.sell_quantity * s.sell_price * s.sell_percentage) / 100;
+  }
+  const averageCost = copiesBought ? totalCost / copiesBought : 0;
+  return {
+    ...card,
+    copies_bought: copiesBought,
+    copies_sold: copiesSold,
+    quantity_owned: copiesBought - copiesSold,
+    total_cost: round2(totalCost),
+    average_cost: round2(averageCost),
+    total_received: round2(totalReceived),
+    realized_profit: round2(totalReceived - averageCost * copiesSold),
+  };
+}
+
+/** The store for this browser. Only call it from client components. */
+export function browserStore(): LocalStore {
+  return new LocalStore(window.localStorage);
+}
