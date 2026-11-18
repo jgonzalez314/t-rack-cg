@@ -11,6 +11,7 @@ import {
   type Condition,
   type GradingCompany,
 } from "@/lib/data/types";
+import { CardMoney, CardTotals, money } from "./CardMoney";
 import { SyncBadge } from "./SyncBadge";
 import { buttonClass, cardClass, inputClass } from "./ui";
 
@@ -29,6 +30,7 @@ export function FolderView() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [openCard, setOpenCard] = useState<string | null>(null);
 
   if (!store) return <p className="mt-6 text-neutral-500">Loading…</p>;
 
@@ -45,11 +47,19 @@ export function FolderView() {
   }
 
   const cards = store.listCardSummaries(folder.id);
+  const totals = cards.reduce(
+    (t, c) => ({
+      cost: t.cost + c.total_cost,
+      received: t.received + c.total_received,
+      profit: t.profit + c.realized_profit,
+    }),
+    { cost: 0, received: 0, profit: 0 },
+  );
 
   function add(e: React.FormEvent) {
     e.preventDefault();
     const before = store!.listCardSummaries(id).length;
-    const { error } = run((s) =>
+    const { error, value } = run((s) =>
       type === "raw"
         ? s.addCard({ type, folder_id: id, name, card_number: cardNumber, condition })
         : s.addCard({
@@ -66,6 +76,8 @@ export function FolderView() {
     if (error) return;
     const merged = store!.listCardSummaries(id).length === before;
     setNotice(merged ? "This card was already in the folder in that condition." : null);
+    // Open the card so its buy can be entered right away.
+    if (value) setOpenCard(value.id);
     setName("");
     setCardNumber("");
     setCert("");
@@ -151,27 +163,44 @@ export function FolderView() {
         <h3 className="text-lg font-semibold">
           Cards <span className="font-normal text-neutral-500">({cards.length})</span>
         </h3>
+        {cards.length > 0 && (
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            Spent {money(totals.cost)} · Received {money(totals.received)} · Profit {money(totals.profit)}
+          </p>
+        )}
         {cards.length === 0 ? (
           <p className="text-neutral-500">No cards in this folder yet.</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {cards.map((c) => (
-              <li key={c.id} className={`${cardClass} flex items-center justify-between gap-3`}>
-                <span>
-                  <span className="block font-medium">{c.name}</span>
-                  <span className="block text-sm text-neutral-500">
-                    #{c.card_number} ·{" "}
-                    {c.type === "raw" ? c.condition : `${c.grading_company} ${c.grade} · cert ${c.cert_number}`}
+              <li key={c.id} className={cardClass}>
+                <div className="flex items-start justify-between gap-3">
+                  <span>
+                    <span className="block font-medium">{c.name}</span>
+                    <span className="block text-sm text-neutral-500">
+                      #{c.card_number} ·{" "}
+                      {c.type === "raw" ? c.condition : `${c.grading_company} ${c.grade} · cert ${c.cert_number}`}
+                    </span>
                   </span>
-                </span>
+                  <button
+                    type="button"
+                    onClick={() => run((s) => s.deleteCard(c.id))}
+                    className="shrink-0 text-sm text-red-600"
+                    aria-label={`Remove ${c.name}`}
+                  >
+                    Remove
+                  </button>
+                </div>
+                <CardTotals card={c} />
                 <button
                   type="button"
-                  onClick={() => run((s) => s.deleteCard(c.id))}
-                  className="shrink-0 text-sm text-red-600"
-                  aria-label={`Remove ${c.name}`}
+                  aria-expanded={openCard === c.id}
+                  onClick={() => setOpenCard(openCard === c.id ? null : c.id)}
+                  className="mt-2 text-sm font-medium text-blue-600"
                 >
-                  Remove
+                  {openCard === c.id ? "Hide buys and sells" : "Buys and sells"}
                 </button>
+                {openCard === c.id && <CardMoney store={store} card={c} run={run} />}
               </li>
             ))}
           </ul>

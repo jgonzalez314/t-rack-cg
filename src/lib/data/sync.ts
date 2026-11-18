@@ -4,8 +4,8 @@
 // The app always reads and writes the local store first, so folders and cards
 // can be made with no connection. Sync runs whenever the device is online.
 
-import type { Card, Folder } from "./types";
-import type { KeyValueStorage, LocalStore } from "./local-store";
+import type { Card, Folder, Purchase, Sale } from "./types";
+import type { Data, KeyValueStorage, LocalStore, Table } from "./local-store";
 import type { Outbox } from "./outbox";
 
 export const SYNC_STATE_KEY = "t-rack-cg:sync:v1";
@@ -16,11 +16,11 @@ export type BackendResult =
 
 /** What sync needs from the server. The Supabase version is below. */
 export interface SyncBackend {
-  upsert(table: "folders" | "cards", row: Folder | Card): Promise<BackendResult>;
-  remove(table: "folders" | "cards", id: string): Promise<BackendResult>;
+  upsert(table: Table, row: Folder | Card | Purchase | Sale): Promise<BackendResult>;
+  remove(table: Table, id: string): Promise<BackendResult>;
   /** The server's id for a card that matches this one under the folder's unique rules. */
   findMatchingCard(card: Card): Promise<string | null>;
-  fetchAll(): Promise<{ folders: Folder[]; cards: Card[] }>;
+  fetchAll(): Promise<Data>;
 }
 
 export type SyncResult =
@@ -70,9 +70,11 @@ export async function syncNow(opts: {
     // The first time sync runs, queue anything made before it was set up so
     // the pull below does not replace it.
     if (!state.seeded) {
-      const { folders, cards } = store.allFoldersAndCards();
+      const { folders, cards, purchases, sales } = store.allData();
       for (const row of folders) outbox.add({ kind: "upsert", table: "folders", row });
       for (const row of cards) outbox.add({ kind: "upsert", table: "cards", row });
+      for (const row of purchases) outbox.add({ kind: "upsert", table: "purchases", row });
+      for (const row of sales) outbox.add({ kind: "upsert", table: "sales", row });
       writeState(storage, { ...state, seeded: true });
     }
 
@@ -112,7 +114,7 @@ export async function syncNow(opts: {
 
     // Pull. Anything changed locally during the pull waits for the next sync.
     const server = await backend.fetchAll();
-    if (outbox.size === 0) store.replaceFoldersAndCards(server.folders, server.cards);
+    if (outbox.size === 0) store.replaceAll(server);
 
     const at = now().toISOString();
     writeState(storage, { ...readState(storage), seeded: true, lastSyncedAt: at });
@@ -183,21 +185,42 @@ export function supabaseBackend(client: SupabaseLike): SyncBackend {
       return data?.[0]?.id ?? null;
     },
     async fetchAll() {
-      const columns =
-        "id, folder_id, type, name, card_number, game, language, condition, grading_company, grade, cert_number, created_at, updated_at";
-      const [folders, cards] = await Promise.all([
-        client.from("folders").select("id, name, description, created_at, updated_at"),
-        client.from("cards").select(columns),
+      const stamps = "created_at, updated_at";
+      const results = await Promise.all([
+        client.from("folders").select(`id, name, description, ${stamps}`),
+        client
+          .from("cards")
+          .select(
+            `id, folder_id, type, name, card_number, game, language, condition, grading_company, grade, cert_number, ${stamps}`,
+          ),
+        client
+          .from("purchases")
+          .select(`id, card_id, buy_date, buy_price, buy_percentage, quantity, ${stamps}`),
+        client
+          .from("sales")
+          .select(`id, card_id, sell_date, sell_price, sell_percentage, sell_quantity, ${stamps}`),
       ]);
-      for (const r of [folders, cards]) {
+      for (const r of results) {
         const res = toResult(r.error);
         if (!res.ok) throw new Error(res.message);
       }
+      const [folders, cards, purchases, sales] = results.map((r) => r.data ?? []);
+      // Postgres numeric columns can arrive as strings.
       return {
-        folders: folders.data as Folder[],
-        cards: (cards.data as Card[]).map((c) => ({
+        folders: folders as Folder[],
+        cards: (cards as Card[]).map((c) => ({
           ...c,
           grade: c.grade === null ? null : Number(c.grade),
+        })),
+        purchases: (purchases as Purchase[]).map((p) => ({
+          ...p,
+          buy_price: Number(p.buy_price),
+          buy_percentage: Number(p.buy_percentage),
+        })),
+        sales: (sales as Sale[]).map((s) => ({
+          ...s,
+          sell_price: Number(s.sell_price),
+          sell_percentage: Number(s.sell_percentage),
         })),
       };
     },

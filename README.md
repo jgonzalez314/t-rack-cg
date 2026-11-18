@@ -9,8 +9,8 @@ phone's home screen as a web app.
 ## Status
 
 - [x] Phase 1: project setup, sign-in, database schema, home screen install
-- [ ] Phase 2: folders and cards (folders and adding cards done, works offline)
-- [ ] Phase 3: purchases and sales
+- [x] Phase 2: folders and cards (works offline)
+- [x] Phase 3: purchases and sales (entered on each card in a folder)
 - [ ] Phase 4: search
 - [ ] Phase 5: polish and CSV export
 
@@ -73,7 +73,7 @@ this only runs in a production build, not `npm run dev`).
 With Supabase set up, changes made offline wait in a queue on the device and
 sync the next time it is online. A bar at the top shows whether changes are
 waiting. If two devices add the same raw card to the same folder, they share
-one entry after syncing. Purchases and sales are not synced yet.
+one entry after syncing. Buys and sells sync the same way.
 
 ## Data model
 
