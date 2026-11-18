@@ -183,7 +183,7 @@ export function SuggestedPrice({ card }: { card: CardSummary }) {
         ) : (
           <span>{printingLabel(printing)}</span>
         )}
-        {match.updatedAt && <span>Updated {match.updatedAt}</span>}
+        {match.updatedAt && <span>TCGplayer price from {match.updatedAt}</span>}
         {match.url && (
           <a href={match.url} target="_blank" rel="noreferrer" className="text-blue-600">
             TCGplayer

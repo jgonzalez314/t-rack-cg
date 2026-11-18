@@ -86,7 +86,10 @@ menus under the price. The choice is remembered on that device.
 - **Where the price comes from.** TCGplayer has closed its API to new
   developers ("We are no longer granting new API access at this time"), so the
   app reads TCGplayer's prices through the free
-  [Pokemon TCG API](https://pokemontcg.io), which copies them about once a day.
+  [Pokemon TCG API](https://pokemontcg.io). Each card shows the date that
+  service gives for its TCGplayer price. That date can lag: Charizard 010/078
+  showed 2026-10-15 in November 2026 while its $3.84 market price still
+  matched TCGplayer.
 - **Condition.** TCGplayer's market price is mostly Near Mint sales. For LP, MP,
   HP and DMG the app takes 85%, 70%, 50% and 35% of it. Those shares are an
   estimate, not TCGplayer data, and the card says so. Change them in

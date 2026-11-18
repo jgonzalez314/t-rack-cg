@@ -3,7 +3,7 @@
 // TCGplayer no longer gives out new API keys ("We are no longer granting new
 // API access at this time", docs.tcgplayer.com). The Pokemon TCG API
 // (pokemontcg.io) is free and returns TCGplayer's own prices for each card,
-// refreshed about once a day, so the app reads them from there. The lookup
+// so the app reads them from there. The lookup
 // runs on the server (src/app/api/price), so an API key never reaches the
 // browser.
 
