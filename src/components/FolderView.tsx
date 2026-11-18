@@ -12,6 +12,7 @@ import {
   type GradingCompany,
 } from "@/lib/data/types";
 import { CardMoney, CardTotals, money } from "./CardMoney";
+import { SuggestedPrice } from "./SuggestedPrice";
 import { SyncBadge } from "./SyncBadge";
 import { buttonClass, cardClass, inputClass } from "./ui";
 
@@ -191,6 +192,7 @@ export function FolderView() {
                     Remove
                   </button>
                 </div>
+                {c.type === "raw" && <SuggestedPrice card={c} />}
                 <CardTotals card={c} />
                 <button
                   type="button"
