@@ -9,7 +9,7 @@ phone's home screen as a web app.
 ## Status
 
 - [x] Phase 1: project setup, sign-in, database schema, home screen install
-- [ ] Phase 2: folders and cards
+- [ ] Phase 2: folders and cards (folders and adding cards done, works offline)
 - [ ] Phase 3: purchases and sales
 - [ ] Phase 4: search
 - [ ] Phase 5: polish and CSV export
@@ -62,6 +62,18 @@ Open http://localhost:3000 and create an account.
 
 - **iPhone (Safari):** open the site, tap Share, then **Add to Home Screen**.
 - **Android (Chrome):** open the site, tap the menu, then **Install app**.
+
+## Working offline
+
+Folders and cards are always saved in the browser first, so you can create
+folders and add cards with no connection. Once the app has been opened online
+one time, it also opens offline (a service worker keeps a copy of the app;
+this only runs in a production build, not `npm run dev`).
+
+With Supabase set up, changes made offline wait in a queue on the device and
+sync the next time it is online. A bar at the top shows whether changes are
+waiting. If two devices add the same raw card to the same folder, they share
+one entry after syncing. Purchases and sales are not synced yet.
 
 ## Data model
 
