@@ -25,16 +25,20 @@ export const STORAGE_KEY = "t-rack-cg:data:v1";
 
 export type KeyValueStorage = Pick<Storage, "getItem" | "setItem">;
 
+export type Table = "folders" | "cards" | "purchases" | "sales";
+
 /**
- * A folder or card that was saved or deleted locally. The sync code queues
+ * A row that was saved or deleted locally. The sync code queues
  * these and sends them to Supabase when the device is online.
  */
 export type Change =
   | { kind: "upsert"; table: "folders"; row: Folder }
   | { kind: "upsert"; table: "cards"; row: Card }
-  | { kind: "delete"; table: "folders" | "cards"; id: string };
+  | { kind: "upsert"; table: "purchases"; row: Purchase }
+  | { kind: "upsert"; table: "sales"; row: Sale }
+  | { kind: "delete"; table: Table; id: string };
 
-interface Data {
+export interface Data {
   folders: Folder[];
   cards: Card[];
   purchases: Purchase[];
@@ -337,6 +341,7 @@ export class LocalStore {
     const purchase: Purchase = { id: this.newId(), ...input, ...this.stamp() };
     data.purchases.push(purchase);
     this.save(data);
+    this.onChange({ kind: "upsert", table: "purchases", row: purchase });
     return purchase;
   }
 
@@ -349,6 +354,7 @@ export class LocalStore {
     data.purchases[index] = updated;
     this.checkOwned(data, updated.card_id);
     this.save(data);
+    this.onChange({ kind: "upsert", table: "purchases", row: updated });
     return updated;
   }
 
@@ -359,6 +365,7 @@ export class LocalStore {
     data.purchases = data.purchases.filter((p) => p.id !== id);
     this.checkOwned(data, purchase.card_id);
     this.save(data);
+    this.onChange({ kind: "delete", table: "purchases", id });
   }
 
   listSales(cardId: string): Sale[] {
@@ -374,6 +381,7 @@ export class LocalStore {
     data.sales.push(sale);
     this.checkOwned(data, sale.card_id);
     this.save(data);
+    this.onChange({ kind: "upsert", table: "sales", row: sale });
     return sale;
   }
 
@@ -386,6 +394,7 @@ export class LocalStore {
     data.sales[index] = updated;
     this.checkOwned(data, updated.card_id);
     this.save(data);
+    this.onChange({ kind: "upsert", table: "sales", row: updated });
     return updated;
   }
 
@@ -393,26 +402,19 @@ export class LocalStore {
     const data = this.load();
     data.sales = data.sales.filter((s) => s.id !== id);
     this.save(data);
+    this.onChange({ kind: "delete", table: "sales", id });
   }
 
   // ---- sync helpers -------------------------------------------------------
   // These make local data match the server, so they do not call onChange.
 
-  allFoldersAndCards(): { folders: Folder[]; cards: Card[] } {
-    const { folders, cards } = this.load();
-    return { folders, cards };
+  allData(): Data {
+    return this.load();
   }
 
-  /** Swaps in the server's folders and cards, keeping purchases and sales of cards that remain. */
-  replaceFoldersAndCards(folders: Folder[], cards: Card[]) {
-    const data = this.load();
-    const cardIds = new Set(cards.map((c) => c.id));
-    this.save({
-      folders,
-      cards,
-      purchases: data.purchases.filter((p) => cardIds.has(p.card_id)),
-      sales: data.sales.filter((s) => cardIds.has(s.card_id)),
-    });
+  /** Swaps in the server's copy of everything. */
+  replaceAll(data: Data) {
+    this.save({ ...emptyData(), ...data });
   }
 
   /**

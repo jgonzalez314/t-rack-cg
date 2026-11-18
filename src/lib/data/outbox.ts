@@ -5,6 +5,10 @@ import type { Change, KeyValueStorage } from "./local-store";
 
 export const OUTBOX_KEY = "t-rack-cg:outbox:v1";
 
+type MoneyRow = Extract<Change, { kind: "upsert"; table: "purchases" | "sales" }>;
+const isMoneyRow = (c: Change): c is MoneyRow =>
+  c.kind === "upsert" && (c.table === "purchases" || c.table === "sales");
+
 const idOf = (c: Change) => (c.kind === "upsert" ? c.row.id : c.id);
 
 export class Outbox {
@@ -46,14 +50,23 @@ export class Outbox {
         return;
       }
     }
-    const rest = list.filter((c) => !same(c));
+    let rest = list.filter((c) => !same(c));
+    // The server deletes a card's purchases and sales with it, and a folder's
+    // cards with it, so queued saves for those rows are dropped too.
     if (change.kind === "delete" && change.table === "folders") {
-      // The server deletes the folder's cards with it, so drop their saves.
-      const kept = rest.filter(
-        (c) => !(c.kind === "upsert" && c.table === "cards" && c.row.folder_id === id),
+      const cardIds = new Set(
+        rest.flatMap((c) =>
+          c.kind === "upsert" && c.table === "cards" && c.row.folder_id === id ? [c.row.id] : [],
+        ),
       );
-      this.save([...kept, change]);
-      return;
+      rest = rest.filter(
+        (c) =>
+          !(c.kind === "upsert" && c.table === "cards" && cardIds.has(c.row.id)) &&
+          !(isMoneyRow(c) && cardIds.has(c.row.card_id)),
+      );
+    }
+    if (change.kind === "delete" && change.table === "cards") {
+      rest = rest.filter((c) => !(isMoneyRow(c) && c.row.card_id === id));
     }
     this.save([...rest, change]);
   }
@@ -67,6 +80,9 @@ export class Outbox {
   renameCard(oldId: string, newId: string) {
     this.save(
       this.list().map((c) => {
+        if (isMoneyRow(c) && c.row.card_id === oldId) {
+          return { ...c, row: { ...c.row, card_id: newId } } as Change;
+        }
         if (c.table !== "cards") return c;
         if (c.kind === "upsert" && c.row.id === oldId) return { ...c, row: { ...c.row, id: newId } };
         if (c.kind === "delete" && c.id === oldId) return { ...c, id: newId };
