@@ -11,6 +11,7 @@ phone's home screen as a web app.
 - [x] Phase 1: project setup, sign-in, database schema, home screen install
 - [x] Phase 2: folders and cards (works offline)
 - [x] Phase 3: purchases and sales (entered on each card in a folder)
+- [x] Suggested prices for raw cards (TCGplayer market price)
 - [ ] Phase 4: search
 - [ ] Phase 5: polish and CSV export
 
@@ -74,6 +75,27 @@ With Supabase set up, changes made offline wait in a queue on the device and
 sync the next time it is online. A bar at the top shows whether changes are
 waiting. If two devices add the same raw card to the same folder, they share
 one entry after syncing. Buys and sells sync the same way.
+
+## Suggested prices (raw cards)
+
+Each raw card shows a suggested price based on TCGplayer's market price. If
+the name and number match more than one card (reprints, or a promo with the
+same number), pick the right set and printing (holo, reverse holo, ...) from the
+menus under the price. The choice is remembered on that device.
+
+- **Where the price comes from.** TCGplayer has closed its API to new
+  developers ("We are no longer granting new API access at this time"), so the
+  app reads TCGplayer's prices through the free
+  [Pokemon TCG API](https://pokemontcg.io), which copies them about once a day.
+- **Condition.** TCGplayer's market price is mostly Near Mint sales. For LP, MP,
+  HP and DMG the app takes 85%, 70%, 50% and 35% of it. Those shares are an
+  estimate, not TCGplayer data, and the card says so. Change them in
+  `src/lib/pricing/tcgplayer.ts`.
+- **Key.** None needed. Set `POKEMONTCG_API_KEY` (free from
+  [dev.pokemontcg.io](https://dev.pokemontcg.io)) on the server or in Vercel to
+  raise the limit from about 1,000 to 20,000 lookups a day.
+- **Offline.** The last price is saved in the browser and shown offline. Prices
+  refresh every 12 hours, or when you tap **Refresh**.
 
 ## Data model
 
