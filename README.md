@@ -97,6 +97,11 @@ menus under the price. The choice is remembered on that device.
 - **Key.** None needed. Set `POKEMONTCG_API_KEY` (free from
   [dev.pokemontcg.io](https://dev.pokemontcg.io)) on the server or in Vercel to
   raise the limit from about 1,000 to 20,000 lookups a day.
+- **Sell price from TCGplayer.** Tick **Use the TCGplayer price as the sell
+  price** in any raw card's sell form. From then on, every raw card's sell
+  price starts at its suggested price (for the condition and printing you
+  picked). You can still change it for one sale. The setting is saved per
+  device. Slabs are not affected.
 - **Offline.** The last price is saved in the browser and shown offline. Prices
   refresh every 12 hours, or when you tap **Refresh**.
 
