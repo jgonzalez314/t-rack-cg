@@ -25,6 +25,15 @@ export const STORAGE_KEY = "t-rack-cg:data:v1";
 
 export type KeyValueStorage = Pick<Storage, "getItem" | "setItem">;
 
+/**
+ * A folder or card that was saved or deleted locally. The sync code queues
+ * these and sends them to Supabase when the device is online.
+ */
+export type Change =
+  | { kind: "upsert"; table: "folders"; row: Folder }
+  | { kind: "upsert"; table: "cards"; row: Card }
+  | { kind: "delete"; table: "folders" | "cards"; id: string };
+
 interface Data {
   folders: Folder[];
   cards: Card[];
@@ -68,6 +77,7 @@ export class LocalStore {
     private storage: KeyValueStorage,
     private now: () => Date = () => new Date(),
     private newId: () => string = () => crypto.randomUUID(),
+    private onChange: (change: Change) => void = () => {},
   ) {}
 
   // ---- storage ------------------------------------------------------------
@@ -107,6 +117,7 @@ export class LocalStore {
     };
     data.folders.push(folder);
     this.save(data);
+    this.onChange({ kind: "upsert", table: "folders", row: folder });
     return folder;
   }
 
@@ -120,6 +131,7 @@ export class LocalStore {
     }
     folder.updated_at = this.now().toISOString();
     this.save(data);
+    this.onChange({ kind: "upsert", table: "folders", row: folder });
     return folder;
   }
 
@@ -131,6 +143,19 @@ export class LocalStore {
     data.purchases = data.purchases.filter((p) => !cardIds.has(p.card_id));
     data.sales = data.sales.filter((s) => !cardIds.has(s.card_id));
     this.save(data);
+    // The database deletes the folder's cards with it.
+    this.onChange({ kind: "delete", table: "folders", id });
+  }
+
+  getFolder(id: string): Folder | undefined {
+    return this.load().folders.find((f) => f.id === id);
+  }
+
+  /** Number of card entries in each folder, by folder id. */
+  countCardsByFolder(): Record<string, number> {
+    const counts: Record<string, number> = {};
+    for (const c of this.load().cards) counts[c.folder_id] = (counts[c.folder_id] ?? 0) + 1;
+    return counts;
   }
 
   // ---- cards --------------------------------------------------------------
@@ -226,6 +251,7 @@ export class LocalStore {
     this.validateCard(data, card);
     data.cards.push(card);
     this.save(data);
+    this.onChange({ kind: "upsert", table: "cards", row: card });
     return card;
   }
 
@@ -256,6 +282,7 @@ export class LocalStore {
     this.validateCard(data, updated);
     data.cards[index] = updated;
     this.save(data);
+    this.onChange({ kind: "upsert", table: "cards", row: updated });
     return updated;
   }
 
@@ -265,6 +292,7 @@ export class LocalStore {
     data.purchases = data.purchases.filter((p) => p.card_id !== id);
     data.sales = data.sales.filter((s) => s.card_id !== id);
     this.save(data);
+    this.onChange({ kind: "delete", table: "cards", id });
   }
 
   // ---- purchases and sales ------------------------------------------------
@@ -364,6 +392,42 @@ export class LocalStore {
   deleteSale(id: string) {
     const data = this.load();
     data.sales = data.sales.filter((s) => s.id !== id);
+    this.save(data);
+  }
+
+  // ---- sync helpers -------------------------------------------------------
+  // These make local data match the server, so they do not call onChange.
+
+  allFoldersAndCards(): { folders: Folder[]; cards: Card[] } {
+    const { folders, cards } = this.load();
+    return { folders, cards };
+  }
+
+  /** Swaps in the server's folders and cards, keeping purchases and sales of cards that remain. */
+  replaceFoldersAndCards(folders: Folder[], cards: Card[]) {
+    const data = this.load();
+    const cardIds = new Set(cards.map((c) => c.id));
+    this.save({
+      folders,
+      cards,
+      purchases: data.purchases.filter((p) => cardIds.has(p.card_id)),
+      sales: data.sales.filter((s) => cardIds.has(s.card_id)),
+    });
+  }
+
+  /**
+   * Gives a local card the id of the matching card on the server, moving its
+   * purchases and sales with it.
+   */
+  replaceCardId(oldId: string, newId: string) {
+    const data = this.load();
+    const swap = (id: string) => (id === oldId ? newId : id);
+    const hasNew = data.cards.some((c) => c.id === newId);
+    data.cards = hasNew
+      ? data.cards.filter((c) => c.id !== oldId)
+      : data.cards.map((c) => (c.id === oldId ? { ...c, id: newId } : c));
+    data.purchases = data.purchases.map((p) => ({ ...p, card_id: swap(p.card_id) }));
+    data.sales = data.sales.map((s) => ({ ...s, card_id: swap(s.card_id) }));
     this.save(data);
   }
 

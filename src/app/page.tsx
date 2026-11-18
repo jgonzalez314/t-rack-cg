@@ -1,3 +1,4 @@
+import { FolderList } from "@/components/FolderList";
 import { isLocalMode } from "@/lib/config";
 import { createClient } from "@/lib/supabase/server";
 
@@ -39,9 +40,7 @@ export default async function Home() {
         </p>
       )}
 
-      <p className="mt-4 text-neutral-600 dark:text-neutral-400">
-        Folders and cards are coming in the next phase.
-      </p>
+      <FolderList />
     </main>
   );
 }
