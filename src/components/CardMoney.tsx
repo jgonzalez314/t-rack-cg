@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { LocalStore } from "@/lib/data/local-store";
 import type { CardSummary } from "@/lib/data/types";
+import { updateSettings, useSettings } from "@/lib/settings";
 import { inputClass } from "./ui";
 
 type Run = <T>(fn: (s: LocalStore) => T) => { value?: T; error?: string };
@@ -46,10 +47,23 @@ function Stat({ label, value, tone = "" }: { label: string; value: string; tone?
 }
 
 /** Buys and sells for one card, with forms to add more. */
-export function CardMoney({ store, card, run }: { store: LocalStore; card: CardSummary; run: Run }) {
+export function CardMoney({
+  store,
+  card,
+  run,
+  suggestedPrice,
+}: {
+  store: LocalStore;
+  card: CardSummary;
+  run: Run;
+  /** TCGplayer suggested price for a raw card (null while unknown). */
+  suggestedPrice?: number | null;
+}) {
   const purchases = store.listPurchases(card.id);
   const sales = store.listSales(card.id);
   const [error, setError] = useState<string | null>(null);
+  const { sellPriceSource } = useSettings();
+  const useTcgplayer = card.type === "raw" && sellPriceSource === "tcgplayer";
 
   return (
     <div className="mt-3 flex flex-col gap-4 border-t border-neutral-200 pt-3 dark:border-neutral-800">
@@ -78,6 +92,19 @@ export function CardMoney({ store, card, run }: { store: LocalStore; card: CardS
 
       <EntryForm
         kind="sell"
+        autoPrice={useTcgplayer ? (suggestedPrice ?? null) : undefined}
+        setting={
+          card.type === "raw" ? (
+            <label className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
+              <input
+                type="checkbox"
+                checked={sellPriceSource === "tcgplayer"}
+                onChange={(e) => updateSettings({ sellPriceSource: e.target.checked ? "tcgplayer" : "manual" })}
+              />
+              Use the TCGplayer price as the sell price (all raw cards)
+            </label>
+          ) : null
+        }
         onSubmit={(v) => {
           const r = run((s) =>
             s.addSale({ card_id: card.id, sell_date: v.date, sell_price: v.price, sell_percentage: v.percent, sell_quantity: v.quantity }),
@@ -105,9 +132,26 @@ export function CardMoney({ store, card, run }: { store: LocalStore; card: CardS
 
 type Entry = { date: string; price: number; percent: number; quantity: number };
 
-function EntryForm({ kind, onSubmit }: { kind: "buy" | "sell"; onSubmit: (v: Entry) => boolean }) {
+function EntryForm({
+  kind,
+  onSubmit,
+  autoPrice,
+  setting,
+}: {
+  kind: "buy" | "sell";
+  onSubmit: (v: Entry) => boolean;
+  /** When set, the price field is filled with this (null: price not known yet). */
+  autoPrice?: number | null;
+  setting?: React.ReactNode;
+}) {
   const [date, setDate] = useState(today);
   const [price, setPrice] = useState("");
+  const autoText = autoPrice == null ? "" : autoPrice.toFixed(2);
+  // Fill the price when the setting is turned on or the TCGplayer price
+  // changes. The field can still be edited for one sale.
+  useEffect(() => {
+    if (autoText) setPrice(autoText);
+  }, [autoText]);
   const [percent, setPercent] = useState("100");
   const [quantity, setQuantity] = useState("1");
   const verb = kind === "buy" ? "Buy" : "Sell";
@@ -120,13 +164,17 @@ function EntryForm({ kind, onSubmit }: { kind: "buy" | "sell"; onSubmit: (v: Ent
         e.preventDefault();
         const ok = onSubmit({ date, price: Number(price), percent: Number(percent), quantity: Number(quantity) });
         if (ok) {
-          setPrice("");
+          setPrice(autoText);
           setQuantity("1");
         }
       }}
       className="flex flex-col gap-2"
     >
       <h4 className="text-sm font-semibold">Add a {kind}</h4>
+      {setting}
+      {autoPrice === null && (
+        <p className="text-xs text-neutral-500">No TCGplayer price for this card yet, so enter the sell price.</p>
+      )}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <label className="flex flex-col gap-1 text-xs">
           {verb} date

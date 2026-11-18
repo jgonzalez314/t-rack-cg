@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useCollection } from "@/lib/data/use-collection";
 import {
   CONDITIONS,
@@ -32,6 +32,12 @@ export function FolderView() {
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [openCard, setOpenCard] = useState<string | null>(null);
+  const [prices, setPrices] = useState<Record<string, number | null>>({});
+  const onPrice = useCallback(
+    (cardId: string, price: number | null) =>
+      setPrices((p) => (p[cardId] === price ? p : { ...p, [cardId]: price })),
+    [],
+  );
 
   if (!store) return <p className="mt-6 text-neutral-500">Loading…</p>;
 
@@ -192,7 +198,7 @@ export function FolderView() {
                     Remove
                   </button>
                 </div>
-                {c.type === "raw" && <SuggestedPrice card={c} />}
+                {c.type === "raw" && <SuggestedPrice card={c} onPrice={onPrice} />}
                 <CardTotals card={c} />
                 <button
                   type="button"
@@ -202,7 +208,7 @@ export function FolderView() {
                 >
                   {openCard === c.id ? "Hide buys and sells" : "Buys and sells"}
                 </button>
-                {openCard === c.id && <CardMoney store={store} card={c} run={run} />}
+                {openCard === c.id && <CardMoney store={store} card={c} run={run} suggestedPrice={prices[c.id]} />}
               </li>
             ))}
           </ul>

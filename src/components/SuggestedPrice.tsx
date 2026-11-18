@@ -47,7 +47,23 @@ type State =
   | { status: "ready"; lookup: PriceLookup; at: number };
 
 /** Suggested price for a raw card, from TCGplayer's market price. */
-export function SuggestedPrice({ card }: { card: CardSummary }) {
+/** The match and printing to price: the user's pick, or the best match. */
+function selection(lookup: PriceLookup, pick: Pick) {
+  const match = lookup.matches.find((m) => m.id === pick.match) ?? lookup.matches[0];
+  if (!match) return null;
+  const printings = sortPrintings(match.prices);
+  const printing = printings.includes(pick.printing ?? "") ? pick.printing! : printings[0];
+  return { match, printings, printing };
+}
+
+export function SuggestedPrice({
+  card,
+  onPrice,
+}: {
+  card: CardSummary;
+  /** Called with the suggested price (or null) whenever it changes. */
+  onPrice?: (cardId: string, price: number | null) => void;
+}) {
   const key = lookupKey(card);
   const [state, setState] = useState<State>({ status: "loading" });
   const [pick, setPick] = useState<Pick>({});
@@ -91,6 +107,13 @@ export function SuggestedPrice({ card }: { card: CardSummary }) {
     };
   }, [key, card.name, card.card_number, refresh]);
 
+  const condition = (card.condition ?? "NM") as Condition;
+  const picked = state.status === "ready" ? selection(state.lookup, pick) : null;
+  const suggested = picked ? suggestedPrice(picked.match.prices[picked.printing], condition) : null;
+  useEffect(() => {
+    onPrice?.(card.id, suggested);
+  }, [onPrice, card.id, suggested]);
+
   function choose(next: Pick) {
     setPick(next);
     writeJson<Pick>(PICK_KEY, card.id, next);
@@ -113,7 +136,7 @@ export function SuggestedPrice({ card }: { card: CardSummary }) {
   }
 
   const { matches } = state.lookup;
-  if (matches.length === 0) {
+  if (!picked) {
     return (
       <p className={`${box} text-neutral-500`}>
         No TCGplayer price found for this name and number. Check the spelling and the number (like 4/102).
@@ -121,13 +144,8 @@ export function SuggestedPrice({ card }: { card: CardSummary }) {
     );
   }
 
-  const match = matches.find((m) => m.id === pick.match) ?? matches[0];
-  const printings = sortPrintings(match.prices);
-  const printing = printings.includes(pick.printing ?? "") ? pick.printing! : printings[0];
-  const condition = (card.condition ?? "NM") as Condition;
-  const price = match.prices[printing];
-  const market = basePrice(price);
-  const suggested = suggestedPrice(price, condition);
+  const { match, printings, printing } = picked;
+  const market = basePrice(match.prices[printing]);
   const selectClass =
     "rounded border border-neutral-300 bg-white px-1.5 py-0.5 text-xs dark:border-neutral-700 dark:bg-neutral-950";
 
