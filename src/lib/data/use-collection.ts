@@ -10,7 +10,7 @@ import { isLocalMode } from "@/lib/config";
 import { createClient } from "@/lib/supabase/client";
 import { LocalStore, LocalStoreError, STORAGE_KEY } from "./local-store";
 import { OUTBOX_KEY, Outbox } from "./outbox";
-import { lastSyncedAt, supabaseBackend, syncNow } from "./sync";
+import { clearAccountData, lastSyncedAt, supabaseBackend, syncNow } from "./sync";
 
 export type SyncStatus =
   | { state: "local" } // local mode: nothing to sync
@@ -75,6 +75,7 @@ async function runSync() {
         outbox,
         backend: supabaseBackend(supabase),
         storage: window.localStorage,
+        userId: data.session.user.id,
       });
       if (result.status === "synced") setStatus({ state: "synced", at: result.at });
       else if (result.status === "offline") setStatus({ state: "offline", pending: outbox.size });
@@ -84,6 +85,24 @@ async function runSync() {
     syncing = null;
   });
   return syncing;
+}
+
+/**
+ * Before signing out: tries one last sync and returns how many changes are
+ * still not on the server, so the caller can warn before wiping them.
+ */
+export async function pendingChanges(): Promise<number> {
+  const c = getClient();
+  if (!c.outbox) return 0;
+  if (c.outbox.size) await runSync().catch(() => {});
+  return c.outbox.size;
+}
+
+/** Wipes this account's data from the browser, for signing out. */
+export function clearThisDevice() {
+  clearTimeout(syncTimer);
+  clearAccountData(window.localStorage);
+  notify();
 }
 
 /** Syncs soon, so a burst of changes goes out together. */

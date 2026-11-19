@@ -16,6 +16,7 @@ import {
   basePrice,
   CONDITION_FACTOR,
   printingLabel,
+  safeTcgplayerUrl,
   suggestedPrice,
   type PriceLookup,
 } from "@/lib/pricing/tcgplayer";
@@ -119,6 +120,8 @@ export function SuggestedPrice({
 
   const { match, printings, printing } = picked;
   const market = basePrice(match.prices[printing]);
+  // Checked again here: older lookups saved on this device were not filtered.
+  const link = safeTcgplayerUrl(match.url);
   const selectClass =
     "rounded-md border border-field-line bg-field px-1.5 py-0.5 text-xs text-ink";
 
@@ -175,8 +178,8 @@ export function SuggestedPrice({
           <span>{printingLabel(printing)}</span>
         )}
         {match.updatedAt && <span>TCGplayer price from {match.updatedAt}</span>}
-        {match.url && (
-          <a href={match.url} target="_blank" rel="noreferrer" className="font-medium text-accent">
+        {link && (
+          <a href={link} target="_blank" rel="noreferrer" className="font-medium text-accent">
             TCGplayer
           </a>
         )}
