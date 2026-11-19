@@ -119,16 +119,16 @@ export function SuggestedPrice({
     writeJson<Pick>(PICK_KEY, card.id, next);
   }
 
-  const box = "mt-2 rounded-lg bg-neutral-50 px-3 py-2 text-sm dark:bg-neutral-900";
+  const box = "mt-3 rounded-xl bg-sunken px-3 py-2.5 text-sm";
 
   if (state.status === "loading") {
-    return <p className={`${box} text-neutral-500`}>Looking up TCGplayer price…</p>;
+    return <p className={`${box} text-muted`}>Looking up TCGplayer price…</p>;
   }
   if (state.status === "error") {
     return (
-      <p className={`${box} text-neutral-500`}>
+      <p className={`${box} text-muted`}>
         {state.message}{" "}
-        <button type="button" onClick={() => setRefresh((n) => n + 1)} className="text-blue-600">
+        <button type="button" onClick={() => setRefresh((n) => n + 1)} className="font-medium text-accent">
           Try again
         </button>
       </p>
@@ -138,7 +138,7 @@ export function SuggestedPrice({
   const { matches } = state.lookup;
   if (!picked) {
     return (
-      <p className={`${box} text-neutral-500`}>
+      <p className={`${box} text-muted`}>
         No TCGplayer price found for this name and number. Check the spelling and the number (like 4/102).
       </p>
     );
@@ -147,25 +147,25 @@ export function SuggestedPrice({
   const { match, printings, printing } = picked;
   const market = basePrice(match.prices[printing]);
   const selectClass =
-    "rounded border border-neutral-300 bg-white px-1.5 py-0.5 text-xs dark:border-neutral-700 dark:bg-neutral-950";
+    "rounded-md border border-field-line bg-field px-1.5 py-0.5 text-xs text-ink";
 
   return (
     <div className={box} aria-label="Suggested price">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3">
         <span>
-          <span className="text-xs text-neutral-500">Suggested price ({condition})</span>{" "}
-          <span className="text-base font-semibold tabular-nums">
+          <span className="text-[11px] font-semibold tracking-wide text-muted uppercase">Suggested price ({condition})</span>{" "}
+          <span className="text-xl font-bold tracking-tight tabular-nums">
             {suggested === null ? "No price yet" : money(suggested)}
           </span>
         </span>
         {market !== null && (
-          <span className="text-xs text-neutral-500 tabular-nums">
+          <span className="text-xs text-muted tabular-nums">
             TCGplayer market {money(market)}
             {condition !== "NM" && ` × ${Math.round(CONDITION_FACTOR[condition] * 100)}% for ${condition} (estimate)`}
           </span>
         )}
       </div>
-      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
         {matches.length > 1 ? (
           <select
             aria-label="Set"
@@ -203,11 +203,11 @@ export function SuggestedPrice({
         )}
         {match.updatedAt && <span>TCGplayer price from {match.updatedAt}</span>}
         {match.url && (
-          <a href={match.url} target="_blank" rel="noreferrer" className="text-blue-600">
+          <a href={match.url} target="_blank" rel="noreferrer" className="font-medium text-accent">
             TCGplayer
           </a>
         )}
-        <button type="button" onClick={() => setRefresh((n) => n + 1)} className="text-blue-600">
+        <button type="button" onClick={() => setRefresh((n) => n + 1)} className="font-medium text-accent">
           Refresh
         </button>
       </div>

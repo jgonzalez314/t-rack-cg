@@ -1,24 +1,86 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * Design A, "Clean light": grouped white lists on soft grey with one blue
+ * accent. Every color is a token, so the dark version below only swaps the
+ * values. Dark mode follows the system setting.
+ *
+ * Use the token classes (bg-app, bg-surface, text-ink, text-muted, border-line,
+ * text-accent, bg-accent-soft, text-pos, text-neg, ...) instead of raw palette
+ * colors so both modes stay in step.
+ */
+@theme {
+  --color-app: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-sunken: #f1f3f6;
+  --color-ink: #111318;
+  --color-ink-soft: #374151;
+  --color-muted: #6b7280;
+  --color-faint: #9aa1ad;
+  --color-line: #e6e8ec;
+  --color-divider: #f0f1f4;
+  --color-field: #ffffff;
+  --color-field-line: #dfe2e7;
+  --color-accent: #2f6bff;
+  --color-accent-ink: #ffffff;
+  --color-accent-soft: #eaf0ff;
+  --color-pos: #15803d;
+  --color-pos-soft: #e8f7ee;
+  --color-neg: #dc2626;
+  --color-neg-soft: #fdecec;
+  --color-warn: #92400e;
+  --color-warn-soft: #fff7e6;
+  --color-warn-line: #f6d9a3;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --shadow-tile: 0 1px 2px rgb(16 24 40 / 0.05);
+  --shadow-float: 0 10px 24px -8px rgb(47 107 255 / 0.55);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: dark;
+    --color-app: #0b0c0f;
+    --color-surface: #17191e;
+    --color-sunken: #22252c;
+    --color-ink: #f1f2f4;
+    --color-ink-soft: #c9ccd3;
+    --color-muted: #9097a3;
+    --color-faint: #6b7280;
+    --color-line: #262931;
+    --color-divider: #22252c;
+    --color-field: #1d2026;
+    --color-field-line: #30343d;
+    --color-accent: #5b8cff;
+    --color-accent-ink: #ffffff;
+    --color-accent-soft: #1c2a4a;
+    --color-pos: #4ade80;
+    --color-pos-soft: #12301f;
+    --color-neg: #f87171;
+    --color-neg-soft: #3a1717;
+    --color-warn: #fcd34d;
+    --color-warn-soft: #2d2210;
+    --color-warn-line: #5c4415;
+
+    --shadow-tile: 0 0 0 1px rgb(255 255 255 / 0.03);
+    --shadow-float: 0 10px 24px -8px rgb(0 0 0 / 0.7);
   }
 }
 
+:root {
+  color-scheme: light dark;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--color-app);
+  color: var(--color-ink);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, "Segoe UI", Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Native date pickers and selects pick up the right colors in dark mode. */
+input,
+select {
+  color-scheme: inherit;
 }

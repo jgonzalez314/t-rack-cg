@@ -13,12 +13,12 @@ export default async function Home() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-2xl flex-col px-4 py-6">
-      <header className="mb-8 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">T-rack-CG</h1>
+    <main className="mx-auto flex min-h-dvh max-w-2xl flex-col px-4 pt-[max(1.5rem,env(safe-area-inset-top))] pb-10">
+      <header className="mb-4 flex items-center justify-between">
+        <h1 className="text-[32px] font-bold tracking-tight">T-rack-CG</h1>
         {!isLocalMode && (
           <form action="/auth/signout" method="post">
-            <button type="submit" className="text-sm text-blue-600">
+            <button type="submit" className="text-[15px] font-medium text-accent">
               Sign out
             </button>
           </form>
@@ -26,7 +26,7 @@ export default async function Home() {
       </header>
 
       {isLocalMode ? (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
+        <div className="rounded-2xl border border-warn-line bg-warn-soft px-4 py-3 text-sm text-warn">
           <p className="font-medium">Local mode</p>
           <p className="mt-1">
             No database is connected, so there is no sign-in and your cards are
@@ -35,7 +35,7 @@ export default async function Home() {
           </p>
         </div>
       ) : (
-        <p className="text-neutral-600 dark:text-neutral-400">
+        <p className="text-sm text-muted">
           Signed in as <span className="font-medium">{email}</span>.
         </p>
       )}

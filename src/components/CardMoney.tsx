@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { LocalStore } from "@/lib/data/local-store";
 import type { CardSummary } from "@/lib/data/types";
 import { updateSettings, useSettings } from "@/lib/settings";
-import { inputClass } from "./ui";
+import { inputClass, labelClass, profitTone } from "./ui";
 
 type Run = <T>(fn: (s: LocalStore) => T) => { value?: T; error?: string };
 
@@ -19,20 +19,14 @@ const today = () => {
 
 /** One-line totals shown under each card. */
 export function CardTotals({ card }: { card: CardSummary }) {
-  const profitTone =
-    card.realized_profit > 0
-      ? "text-green-700 dark:text-green-400"
-      : card.realized_profit < 0
-        ? "text-red-600"
-        : "";
   return (
-    <dl className="mt-2 grid grid-cols-3 gap-x-3 gap-y-1 text-sm">
+    <dl className="mt-3 grid grid-cols-3 gap-x-3 gap-y-2.5 border-t border-divider pt-3 text-sm">
       <Stat label="Own" value={String(card.quantity_owned)} />
       <Stat label="Bought" value={String(card.copies_bought)} />
       <Stat label="Sold" value={String(card.copies_sold)} />
       <Stat label="Avg cost" value={money(card.average_cost)} />
       <Stat label="Received" value={money(card.total_received)} />
-      <Stat label="Profit" value={money(card.realized_profit)} tone={profitTone} />
+      <Stat label="Profit" value={money(card.realized_profit)} tone={profitTone(card.realized_profit)} />
     </dl>
   );
 }
@@ -40,8 +34,8 @@ export function CardTotals({ card }: { card: CardSummary }) {
 function Stat({ label, value, tone = "" }: { label: string; value: string; tone?: string }) {
   return (
     <div>
-      <dt className="text-xs text-neutral-500">{label}</dt>
-      <dd className={`font-medium tabular-nums ${tone}`}>{value}</dd>
+      <dt className={labelClass}>{label}</dt>
+      <dd className={`mt-0.5 text-[15px] font-semibold tabular-nums ${tone}`}>{value}</dd>
     </div>
   );
 }
@@ -66,7 +60,7 @@ export function CardMoney({
   const useTcgplayer = card.type === "raw" && sellPriceSource === "tcgplayer";
 
   return (
-    <div className="mt-3 flex flex-col gap-4 border-t border-neutral-200 pt-3 dark:border-neutral-800">
+    <div className="mt-3 flex flex-col gap-4 border-t border-divider pt-3">
       <EntryForm
         kind="buy"
         onSubmit={(v) => {
@@ -95,9 +89,10 @@ export function CardMoney({
         autoPrice={useTcgplayer ? (suggestedPrice ?? null) : undefined}
         setting={
           card.type === "raw" ? (
-            <label className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
+            <label className="flex items-center gap-2 text-xs text-ink-soft">
               <input
                 type="checkbox"
+                className="h-4 w-4 accent-accent"
                 checked={sellPriceSource === "tcgplayer"}
                 onChange={(e) => updateSettings({ sellPriceSource: e.target.checked ? "tcgplayer" : "manual" })}
               />
@@ -125,7 +120,7 @@ export function CardMoney({
         }))}
         onDelete={(id) => setError(run((s) => s.deleteSale(id)).error ?? null)}
       />
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-neg">{error}</p>}
     </div>
   );
 }
@@ -170,25 +165,25 @@ function EntryForm({
       }}
       className="flex flex-col gap-2"
     >
-      <h4 className="text-sm font-semibold">Add a {kind}</h4>
+      <h4 className="text-[15px] font-semibold">Add a {kind}</h4>
       {setting}
       {autoPrice === null && (
-        <p className="text-xs text-neutral-500">No TCGplayer price for this card yet, so enter the sell price.</p>
+        <p className="text-xs text-muted">No TCGplayer price for this card yet, so enter the sell price.</p>
       )}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <label className="flex flex-col gap-1 text-xs">
+        <label className="flex flex-col gap-1 text-xs font-medium text-ink-soft">
           {verb} date
           <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
         </label>
-        <label className="flex flex-col gap-1 text-xs">
+        <label className="flex flex-col gap-1 text-xs font-medium text-ink-soft">
           {verb} price ($ market)
           <input type="number" inputMode="decimal" required min={0} step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} className={inputClass} />
         </label>
-        <label className="flex flex-col gap-1 text-xs">
+        <label className="flex flex-col gap-1 text-xs font-medium text-ink-soft">
           {verb} percentage (%)
           <input type="number" inputMode="decimal" required min={0} step="any" value={percent} onChange={(e) => setPercent(e.target.value)} className={inputClass} />
         </label>
-        <label className="flex flex-col gap-1 text-xs">
+        <label className="flex flex-col gap-1 text-xs font-medium text-ink-soft">
           {kind === "buy" ? "Quantity" : "Sold quantity"}
           <input type="number" inputMode="numeric" required min={1} step={1} value={quantity} onChange={(e) => setQuantity(e.target.value)} className={inputClass} />
         </label>
@@ -196,11 +191,13 @@ function EntryForm({
       <div className="flex items-center gap-3">
         <button
           type="submit"
-          className={`rounded-lg px-3 py-1.5 text-sm font-medium text-white ${kind === "buy" ? "bg-blue-600" : "bg-green-700"}`}
+          className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+            kind === "buy" ? "bg-accent text-accent-ink" : "border border-line bg-surface text-ink"
+          }`}
         >
           Add {kind}
         </button>
-        <span className="text-sm text-neutral-500">
+        <span className="text-sm text-muted tabular-nums">
           {kind === "buy" ? "Cost" : "Received"}: {money(total)}
         </span>
       </div>
@@ -221,18 +218,26 @@ function EntryList({
 }) {
   return (
     <div>
-      <h4 className="text-sm font-semibold">{title}</h4>
+      <h4 className={labelClass}>{title}</h4>
       {rows.length === 0 ? (
-        <p className="text-sm text-neutral-500">{empty}</p>
+        <p className="mt-1 text-sm text-muted">{empty}</p>
       ) : (
-        <ul className="mt-1 flex flex-col divide-y divide-neutral-200 text-sm dark:divide-neutral-800">
+        <ul className="mt-1 flex flex-col divide-y divide-divider text-sm">
           {rows.map((r) => (
-            <li key={r.id} className="flex items-center justify-between gap-2 py-1.5">
-              <span className="tabular-nums">
-                {r.date} · {r.quantity} × {money(r.price)} at {r.percent}% ={" "}
-                <span className="font-medium">{money((r.quantity * r.price * r.percent) / 100)}</span>
+            <li key={r.id} className="flex items-center gap-2.5 py-2">
+              <span
+                aria-hidden
+                className={`w-10 shrink-0 rounded-md py-0.5 text-center text-[10.5px] font-bold ${
+                  title === "Buys" ? "bg-accent-soft text-accent" : "bg-pos-soft text-pos"
+                }`}
+              >
+                {title === "Buys" ? "BUY" : "SELL"}
               </span>
-              <button type="button" onClick={() => onDelete(r.id)} className="shrink-0 text-red-600" aria-label={`Delete ${title.toLowerCase().slice(0, -1)} from ${r.date}`}>
+              <span className="min-w-0 flex-1 tabular-nums text-ink-soft">
+                {r.date} · {r.quantity} × {money(r.price)} at {r.percent}% ={" "}
+                <span className="font-semibold text-ink">{money((r.quantity * r.price * r.percent) / 100)}</span>
+              </span>
+              <button type="button" onClick={() => onDelete(r.id)} className="shrink-0 font-medium text-neg" aria-label={`Delete ${title.toLowerCase().slice(0, -1)} from ${r.date}`}>
                 Delete
               </button>
             </li>
