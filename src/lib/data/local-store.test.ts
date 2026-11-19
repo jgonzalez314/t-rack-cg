@@ -98,6 +98,33 @@ describe("money", () => {
   });
 });
 
+describe("listings (sold quantity 0)", () => {
+  it("records the asking price without changing profit or copies owned", () => {
+    const card = store.addCard(raw());
+    store.addPurchase({ card_id: card.id, buy_date: "2026-01-01", buy_price: 100, buy_percentage: 80, quantity: 2 });
+    store.addSale({ card_id: card.id, sell_date: "2026-02-01", sell_price: 100, sell_percentage: 100, sell_quantity: 1 });
+    store.addSale({ card_id: card.id, sell_date: "2026-02-05", sell_price: 150, sell_percentage: 100, sell_quantity: 0 });
+    const [s] = store.listCardSummaries();
+    expect(s).toMatchObject({ copies_sold: 1, quantity_owned: 1, total_received: 100, realized_profit: 20, asking_price: 150 });
+  });
+
+  it("uses the newest listing as the asking price, after percentage", () => {
+    const card = store.addCard(raw());
+    store.addPurchase({ card_id: card.id, buy_date: "2026-01-01", buy_price: 100, buy_percentage: 100, quantity: 1 });
+    expect(store.listCardSummaries()[0].asking_price).toBeNull();
+    store.addSale({ card_id: card.id, sell_date: "2026-03-01", sell_price: 200, sell_percentage: 90, sell_quantity: 0 });
+    store.addSale({ card_id: card.id, sell_date: "2026-02-01", sell_price: 120, sell_percentage: 100, sell_quantity: 0 });
+    expect(store.listCardSummaries()[0].asking_price).toBe(180);
+  });
+
+  it("still rejects negative or fractional sold quantities", () => {
+    const card = store.addCard(raw());
+    const sale = { card_id: card.id, sell_date: "2026-02-01", sell_price: 10, sell_percentage: 100 };
+    expect(() => store.addSale({ ...sale, sell_quantity: -1 })).toThrow(/0 or more/);
+    expect(() => store.addSale({ ...sale, sell_quantity: 0.5 })).toThrow(/0 or more/);
+  });
+});
+
 describe("search", () => {
   it("finds cards by name, number or cert number", () => {
     store.addCard(raw());
