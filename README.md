@@ -12,8 +12,9 @@ phone's home screen as a web app.
 - [x] Phase 2: folders and cards (works offline)
 - [x] Phase 3: purchases and sales (entered on each card in a folder)
 - [x] Suggested prices for raw cards (TCGplayer market price)
+- [x] Export to Excel (.xlsx)
 - [ ] Phase 4: search
-- [ ] Phase 5: polish and CSV export
+- [ ] Phase 5: polish
 
 ## Quick start (no database)
 
@@ -105,6 +106,25 @@ menus under the price. The choice is remembered on that device.
   device. Slabs are not affected.
 - **Offline.** The last price is saved in the browser and shown offline. Prices
   refresh every 12 hours, or when you tap **Refresh**.
+
+## Export to Excel
+
+**Export to Excel** on the folder list downloads everything; **Export folder
+to Excel** on a folder downloads just that folder. The file is built in the
+browser from the data saved on the device, so it works offline. It has four
+sheets, each with a frozen, filterable header row and a totals row:
+
+- **Summary:** one row per folder with cards, copies, spent, received, profit
+  and suggested value (copies owned × the saved TCGplayer price, raw cards
+  only), plus the export date.
+- **Cards:** every card with its condition or grade, copies, costs, profit,
+  asking price and the saved TCGplayer suggested price and its date.
+- **Buys** and **Sells:** every entry with date, market price, percent, price
+  per card and totals (as formulas, so edits in Excel add up). Listings show as
+  **Listed**.
+
+Prices use a `$` format, percents a `%` format and dates `yyyy-mm-dd`. The
+writer lives in `src/lib/export` and needs no extra packages.
 
 ## Data model
 

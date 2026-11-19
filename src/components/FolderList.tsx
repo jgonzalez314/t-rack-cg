@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useCollection } from "@/lib/data/use-collection";
+import { ExportButton } from "./ExportButton";
 import { SyncBadge } from "./SyncBadge";
 import { buttonClass, cardClass, inputClass } from "./ui";
 
@@ -54,7 +55,10 @@ export function FolderList() {
       </form>
 
       <div className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold">Folders</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Folders</h2>
+          {folders.length > 0 && <ExportButton store={store} />}
+        </div>
         {folders.length === 0 ? (
           <p className="text-neutral-500">No folders yet. Create one above to start adding cards.</p>
         ) : (

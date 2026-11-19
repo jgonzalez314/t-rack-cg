@@ -3,43 +3,25 @@
 import { useEffect, useState } from "react";
 import type { CardSummary, Condition } from "@/lib/data/types";
 import {
+  CACHE_KEY,
+  PICK_KEY,
+  lookupKey,
+  readJson,
+  selection,
+  writeJson,
+  type Cached,
+  type PricePick as Pick,
+} from "@/lib/pricing/cache";
+import {
   basePrice,
   CONDITION_FACTOR,
   printingLabel,
-  sortPrintings,
   suggestedPrice,
   type PriceLookup,
 } from "@/lib/pricing/tcgplayer";
 import { money } from "./CardMoney";
 
-// Lookups are saved in this browser, so the last known price still shows
-// offline and the API isn't asked again for 12 hours.
-const CACHE_KEY = "t-rack-cg-prices";
-const PICK_KEY = "t-rack-cg-price-picks";
 const MAX_AGE_MS = 12 * 60 * 60 * 1000;
-
-type Cached = { at: number; lookup: PriceLookup };
-type Pick = { match?: string; printing?: string };
-
-function readJson<T>(key: string): Record<string, T> {
-  try {
-    return JSON.parse(window.localStorage.getItem(key) ?? "{}") as Record<string, T>;
-  } catch {
-    return {};
-  }
-}
-
-function writeJson<T>(key: string, id: string, value: T) {
-  try {
-    const all = readJson<T>(key);
-    all[id] = value;
-    window.localStorage.setItem(key, JSON.stringify(all));
-  } catch {
-    // Storage full or blocked: the price just isn't saved.
-  }
-}
-
-const lookupKey = (c: CardSummary) => `${c.name.trim().toLowerCase()}|${c.card_number.trim().toLowerCase()}`;
 
 type State =
   | { status: "loading" }
@@ -47,15 +29,6 @@ type State =
   | { status: "ready"; lookup: PriceLookup; at: number };
 
 /** Suggested price for a raw card, from TCGplayer's market price. */
-/** The match and printing to price: the user's pick, or the best match. */
-function selection(lookup: PriceLookup, pick: Pick) {
-  const match = lookup.matches.find((m) => m.id === pick.match) ?? lookup.matches[0];
-  if (!match) return null;
-  const printings = sortPrintings(match.prices);
-  const printing = printings.includes(pick.printing ?? "") ? pick.printing! : printings[0];
-  return { match, printings, printing };
-}
-
 export function SuggestedPrice({
   card,
   onPrice,
