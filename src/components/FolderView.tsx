@@ -12,6 +12,7 @@ import {
   type GradingCompany,
 } from "@/lib/data/types";
 import { CardMoney, CardTotals, money } from "./CardMoney";
+import { ExportButton } from "./ExportButton";
 import { SuggestedPrice } from "./SuggestedPrice";
 import { SyncBadge } from "./SyncBadge";
 import { buttonClass, cardClass, inputClass } from "./ui";
@@ -171,9 +172,12 @@ export function FolderView() {
           Cards <span className="font-normal text-neutral-500">({cards.length})</span>
         </h3>
         {cards.length > 0 && (
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
-            Spent {money(totals.cost)} · Received {money(totals.received)} · Profit {money(totals.profit)}
-          </p>
+          <>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+              Spent {money(totals.cost)} · Received {money(totals.received)} · Profit {money(totals.profit)}
+            </p>
+            <ExportButton store={store} folderId={folder.id} />
+          </>
         )}
         {cards.length === 0 ? (
           <p className="text-neutral-500">No cards in this folder yet.</p>
