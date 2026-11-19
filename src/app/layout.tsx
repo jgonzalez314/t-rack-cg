@@ -21,7 +21,11 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#2563eb",
+  // The browser bar matches the page background in light and dark mode.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6f7f9" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0c0f" },
+  ],
 };
 
 export default function RootLayout({

@@ -35,15 +35,15 @@ export function ExportButton({ store, folderId }: { store: LocalStore; folderId?
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col items-end gap-1">
       <button
         type="button"
         onClick={download}
-        className="self-start rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-blue-600 dark:border-neutral-700"
+        className="rounded-full bg-accent-soft px-3 py-1 text-[13px] font-semibold text-accent active:opacity-80"
       >
         {folderId ? "Export folder to Excel" : "Export to Excel"}
       </button>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-xs text-neg">{error}</p>}
     </div>
   );
 }

@@ -15,7 +15,19 @@ import { CardMoney, CardTotals, money } from "./CardMoney";
 import { ExportButton } from "./ExportButton";
 import { SuggestedPrice } from "./SuggestedPrice";
 import { SyncBadge } from "./SyncBadge";
-import { buttonClass, cardClass, inputClass } from "./ui";
+import {
+  buttonClass,
+  cardClass,
+  chipClass,
+  dangerLinkClass,
+  gradeChipClass,
+  inputClass,
+  labelClass,
+  linkClass,
+  profitTone,
+  segmentClass,
+  segmentItemClass,
+} from "./ui";
 
 export function FolderView() {
   const id = useSearchParams().get("id") ?? "";
@@ -40,14 +52,14 @@ export function FolderView() {
     [],
   );
 
-  if (!store) return <p className="mt-6 text-neutral-500">Loading…</p>;
+  if (!store) return <p className="mt-6 text-muted">Loading…</p>;
 
   const folder = store.getFolder(id);
   if (!folder) {
     return (
       <div className="mt-6 flex flex-col gap-3">
         <p>This folder doesn&apos;t exist anymore.</p>
-        <Link href="/" className="text-blue-600">
+        <Link href="/" className={linkClass}>
           Back to folders
         </Link>
       </div>
@@ -100,103 +112,74 @@ export function FolderView() {
     router.push("/");
   }
 
+  const fieldLabel = "flex flex-col gap-1 text-[13px] font-medium text-ink-soft";
+
   return (
-    <section className="mt-2 flex flex-col gap-6">
+    <section className="flex flex-col gap-5 pb-20">
       <div>
-        <Link href="/" className="text-sm text-blue-600">
-          ← Folders
+        <Link href="/" className="text-[16px] text-accent">
+          ‹ Folders
         </Link>
-        <h2 className="mt-2 text-xl font-semibold">{folder.name}</h2>
-        {folder.description && <p className="text-neutral-500">{folder.description}</p>}
+        <h2 className="mt-1.5 text-[32px] font-bold leading-tight tracking-tight">{folder.name}</h2>
+        <p className="text-sm text-muted">
+          {folder.description ? `${folder.description} · ` : ""}
+          {cards.length} {cards.length === 1 ? "card" : "cards"}
+        </p>
       </div>
 
       <SyncBadge status={status} onRetry={() => void syncNow()} />
 
-      <form onSubmit={add} className="flex flex-col gap-2" aria-label="Add card">
-        <h3 className="text-lg font-semibold">Add a card</h3>
-        <div className="flex gap-2" role="radiogroup" aria-label="Card type">
-          {(["raw", "slab"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              role="radio"
-              aria-checked={type === t}
-              onClick={() => setType(t)}
-              className={`rounded-lg border px-3 py-1.5 text-sm ${
-                type === t
-                  ? "border-blue-600 bg-blue-600 text-white"
-                  : "border-neutral-300 dark:border-neutral-700"
-              }`}
-            >
-              {t === "raw" ? "Raw" : "Slab (graded)"}
-            </button>
-          ))}
-        </div>
-        <input aria-label="Card name" placeholder="Card name, like Charizard" value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
-        <input aria-label="Card number" placeholder="Card number, like 4/102" value={cardNumber} onChange={(e) => setCardNumber(e.target.value)} className={inputClass} />
-        {type === "raw" ? (
-          <label className="flex flex-col gap-1 text-sm">
-            Condition
-            <select value={condition} onChange={(e) => setCondition(e.target.value as Condition)} className={inputClass}>
-              {CONDITIONS.map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </select>
-          </label>
-        ) : (
-          <div className="grid grid-cols-2 gap-2">
-            <label className="flex flex-col gap-1 text-sm">
-              Grading company
-              <select value={company} onChange={(e) => setCompany(e.target.value as GradingCompany)} className={inputClass}>
-                {GRADING_COMPANIES.map((c) => (
-                  <option key={c}>{c}</option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1 text-sm">
-              Grade
-              <input type="number" min={1} max={10} step={0.5} value={grade} onChange={(e) => setGrade(e.target.value)} className={inputClass} />
-            </label>
-            <input aria-label="Cert number" placeholder="Cert number" value={cert} onChange={(e) => setCert(e.target.value)} className={`${inputClass} col-span-2`} />
+      {cards.length > 0 && (
+        <dl className={`${cardClass} grid grid-cols-3 py-3.5`} aria-label="Folder totals">
+          <div>
+            <dt className={labelClass}>Spent</dt>
+            <dd className="mt-0.5 text-[17px] font-semibold tabular-nums">{money(totals.cost)}</dd>
           </div>
-        )}
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        {notice && <p className="text-sm text-neutral-600 dark:text-neutral-400">{notice}</p>}
-        <button type="submit" className={`${buttonClass} self-start`}>
-          Add to folder
-        </button>
-      </form>
+          <div className="border-l border-divider pl-3.5">
+            <dt className={labelClass}>Received</dt>
+            <dd className="mt-0.5 text-[17px] font-semibold tabular-nums">{money(totals.received)}</dd>
+          </div>
+          <div className="border-l border-divider pl-3.5">
+            <dt className={labelClass}>Profit</dt>
+            <dd className={`mt-0.5 text-[17px] font-semibold tabular-nums ${profitTone(totals.profit)}`}>
+              {money(totals.profit)}
+            </dd>
+          </div>
+        </dl>
+      )}
 
       <div className="flex flex-col gap-2">
-        <h3 className="text-lg font-semibold">
-          Cards <span className="font-normal text-neutral-500">({cards.length})</span>
-        </h3>
-        {cards.length > 0 && (
-          <>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              Spent {money(totals.cost)} · Received {money(totals.received)} · Profit {money(totals.profit)}
-            </p>
-            <ExportButton store={store} folderId={folder.id} />
-          </>
-        )}
+        <div className="flex items-center justify-between gap-3 px-1">
+          <h3 className={labelClass}>Cards ({cards.length})</h3>
+          {cards.length > 0 && <ExportButton store={store} folderId={folder.id} />}
+        </div>
         {cards.length === 0 ? (
-          <p className="text-neutral-500">No cards in this folder yet.</p>
+          <p className={`${cardClass} text-muted`}>No cards in this folder yet. Add one below.</p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-3">
             {cards.map((c) => (
               <li key={c.id} className={cardClass}>
                 <div className="flex items-start justify-between gap-3">
-                  <span>
-                    <span className="block font-medium">{c.name}</span>
-                    <span className="block text-sm text-neutral-500">
-                      #{c.card_number} ·{" "}
-                      {c.type === "raw" ? c.condition : `${c.grading_company} ${c.grade} · cert ${c.cert_number}`}
+                  <span className="min-w-0">
+                    <span className="block truncate text-[16px] font-semibold">{c.name}</span>
+                    <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[13px] text-muted">
+                      #{c.card_number}
+                      {c.type === "raw" ? (
+                        <span className={chipClass}>{c.condition}</span>
+                      ) : (
+                        <>
+                          <span className={gradeChipClass}>
+                            {c.grading_company} {c.grade}
+                          </span>
+                          <span>cert {c.cert_number}</span>
+                        </>
+                      )}
                     </span>
                   </span>
                   <button
                     type="button"
                     onClick={() => run((s) => s.deleteCard(c.id))}
-                    className="shrink-0 text-sm text-red-600"
+                    className={`shrink-0 text-sm ${dangerLinkClass}`}
                     aria-label={`Remove ${c.name}`}
                   >
                     Remove
@@ -208,7 +191,7 @@ export function FolderView() {
                   type="button"
                   aria-expanded={openCard === c.id}
                   onClick={() => setOpenCard(openCard === c.id ? null : c.id)}
-                  className="mt-2 text-sm font-medium text-blue-600"
+                  className="mt-3 w-full rounded-xl bg-accent-soft py-2 text-sm font-semibold text-accent"
                 >
                   {openCard === c.id ? "Hide buys and sells" : "Buys and sells"}
                 </button>
@@ -219,9 +202,67 @@ export function FolderView() {
         )}
       </div>
 
-      <button type="button" onClick={removeFolder} className="self-start text-sm text-red-600">
+      <form id="add-card" onSubmit={add} className={`${cardClass} flex scroll-mt-4 flex-col gap-2.5 py-4`} aria-label="Add card">
+        <h3 className="text-[17px] font-semibold">Add a card</h3>
+        <div className={segmentClass} role="radiogroup" aria-label="Card type">
+          {(["raw", "slab"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              role="radio"
+              aria-checked={type === t}
+              onClick={() => setType(t)}
+              className={segmentItemClass(type === t)}
+            >
+              {t === "raw" ? "Raw" : "Slab (graded)"}
+            </button>
+          ))}
+        </div>
+        <input aria-label="Card name" placeholder="Card name, like Charizard" value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+        <input aria-label="Card number" placeholder="Card number, like 4/102" value={cardNumber} onChange={(e) => setCardNumber(e.target.value)} className={inputClass} />
+        {type === "raw" ? (
+          <label className={fieldLabel}>
+            Condition
+            <select value={condition} onChange={(e) => setCondition(e.target.value as Condition)} className={inputClass}>
+              {CONDITIONS.map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            <label className={fieldLabel}>
+              Grading company
+              <select value={company} onChange={(e) => setCompany(e.target.value as GradingCompany)} className={inputClass}>
+                {GRADING_COMPANIES.map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
+            </label>
+            <label className={fieldLabel}>
+              Grade
+              <input type="number" min={1} max={10} step={0.5} value={grade} onChange={(e) => setGrade(e.target.value)} className={inputClass} />
+            </label>
+            <input aria-label="Cert number" placeholder="Cert number" value={cert} onChange={(e) => setCert(e.target.value)} className={`${inputClass} col-span-2`} />
+          </div>
+        )}
+        {error && <p className="text-sm text-neg">{error}</p>}
+        {notice && <p className="text-sm text-muted">{notice}</p>}
+        <button type="submit" className={`${buttonClass} self-start`}>
+          Add to folder
+        </button>
+      </form>
+
+      <button type="button" onClick={removeFolder} className={`self-start px-1 text-sm ${dangerLinkClass}`}>
         {confirmDelete ? "Tap again to delete this folder and its cards" : "Delete folder"}
       </button>
+
+      <a
+        href="#add-card"
+        className="fixed right-4 bottom-[max(1.25rem,env(safe-area-inset-bottom))] rounded-full bg-accent px-5 py-3 text-[15px] font-semibold text-accent-ink shadow-float"
+      >
+        + Add card
+      </a>
     </section>
   );
 }
