@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useCollection } from "@/lib/data/use-collection";
+import { ExportButton } from "./ExportButton";
 import { SyncBadge } from "./SyncBadge";
 import { buttonClass, cardClass, inputClass, labelClass } from "./ui";
 
@@ -32,7 +33,10 @@ export function FolderList() {
       <SyncBadge status={status} onRetry={() => void syncNow()} />
 
       <div className="flex flex-col gap-2">
-        <h2 className={`${labelClass} px-1`}>Folders</h2>
+        <div className="flex items-center justify-between gap-3 px-1">
+          <h2 className={labelClass}>Folders</h2>
+          {folders.length > 0 && <ExportButton store={store} />}
+        </div>
         {folders.length === 0 ? (
           <p className={`${cardClass} text-muted`}>No folders yet. Create one below to start adding cards.</p>
         ) : (

@@ -12,6 +12,7 @@ import {
   type GradingCompany,
 } from "@/lib/data/types";
 import { CardMoney, CardTotals, money } from "./CardMoney";
+import { ExportButton } from "./ExportButton";
 import { SuggestedPrice } from "./SuggestedPrice";
 import { SyncBadge } from "./SyncBadge";
 import {
@@ -148,7 +149,10 @@ export function FolderView() {
       )}
 
       <div className="flex flex-col gap-2">
-        <h3 className={`${labelClass} px-1`}>Cards ({cards.length})</h3>
+        <div className="flex items-center justify-between gap-3 px-1">
+          <h3 className={labelClass}>Cards ({cards.length})</h3>
+          {cards.length > 0 && <ExportButton store={store} folderId={folder.id} />}
+        </div>
         {cards.length === 0 ? (
           <p className={`${cardClass} text-muted`}>No cards in this folder yet. Add one below.</p>
         ) : (
