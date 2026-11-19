@@ -37,9 +37,10 @@ to `.env.local`.
 ### 1. Create a Supabase project
 
 1. Sign up at [supabase.com](https://supabase.com) and create a new project (the free plan is enough).
-2. Open **SQL Editor**, paste the contents of
-   [`supabase/migrations/20261110000000_init.sql`](supabase/migrations/20261110000000_init.sql),
-   and click **Run**.
+2. Open **SQL Editor** and run each file in
+   [`supabase/migrations`](supabase/migrations) in order, oldest first:
+   paste its contents and click **Run**. (Already set up? Run only the newer
+   ones, such as `20261119000000_sale_listings.sql`.)
 3. Open **Project Settings > API** and copy the **Project URL** and the **anon public** key.
 
 ### 2. Run the app locally
@@ -112,10 +113,12 @@ menus under the price. The choice is remembered on that device.
 | `folders` | Folders you create |
 | `cards` | One entry per card in a folder. Raw cards with the same name, number and condition share one entry. Slabs store grading company, grade and cert number. |
 | `purchases` | Each buy: date, market price per card, percent of market paid, quantity |
-| `sales` | Each sale: date, market price per card, percent of market received, quantity |
-| `card_summary` (view) | Quantity owned, total cost, average cost, total received and profit per card |
+| `sales` | Each sale: date, market price per card, percent of market received, quantity. A quantity of 0 is a listing: up for sale at that price, not sold yet. |
+| `card_summary` (view) | Quantity owned, total cost, average cost, total received, profit and asking price per card |
 
 Profit uses average cost: `(sell price × sell % − average cost) × copies sold`.
+Listings (sold quantity 0) are left out of profit. The newest listing's
+`sell price × sell %` shows as **Asking** on the card while you still own a copy.
 The database blocks selling more copies than were bought, and every user can
 only see their own data.
 

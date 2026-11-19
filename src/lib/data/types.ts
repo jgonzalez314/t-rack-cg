@@ -48,7 +48,7 @@ export interface Sale {
   sell_date: string; // YYYY-MM-DD
   sell_price: number; // market value per card, USD
   sell_percentage: number; // percent of market received
-  sell_quantity: number;
+  sell_quantity: number; // 0 = listed at this price, not sold yet
   created_at: string;
   updated_at: string;
 }
@@ -61,6 +61,8 @@ export interface CardSummary extends Card {
   average_cost: number;
   total_received: number;
   realized_profit: number;
+  /** Price per card received at the newest listing (sell with 0 sold), or null. */
+  asking_price: number | null;
 }
 
 export type NewFolder = { name: string; description?: string | null };

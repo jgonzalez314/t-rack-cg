@@ -4,6 +4,7 @@
 //     one folder share one entry
 //   - a slab's cert number is unique within a folder
 //   - you cannot sell more copies than you bought
+//   - a sale with 0 sold is a listing: the asking price, not a sale
 //   - deleting a folder deletes its cards; deleting a card deletes its
 //     purchases and sales
 
@@ -67,6 +68,12 @@ function requireNonNegative(value: number, field: string) {
 function requirePositiveInt(value: number, field: string) {
   if (!Number.isInteger(value) || value < 1) {
     throw new LocalStoreError(`${field} must be a whole number of 1 or more`);
+  }
+}
+
+function requireNonNegativeInt(value: number, field: string) {
+  if (!Number.isInteger(value) || value < 0) {
+    throw new LocalStoreError(`${field} must be a whole number of 0 or more`);
   }
 }
 
@@ -326,7 +333,7 @@ export class LocalStore {
     requireDate(s.sell_date, "Sell date");
     requireNonNegative(s.sell_price, "Sell price");
     requireNonNegative(s.sell_percentage, "Sell percentage");
-    requirePositiveInt(s.sell_quantity, "Sell quantity");
+    requireNonNegativeInt(s.sell_quantity, "Sold quantity");
   }
 
   listPurchases(cardId: string): Purchase[] {
@@ -467,8 +474,14 @@ export function summarize(card: Card, purchases: Purchase[], sales: Sale[]): Car
   }
   let copiesSold = 0;
   let totalReceived = 0;
+  let listing: Sale | null = null;
   for (const s of sales) {
     if (s.card_id !== card.id) continue;
+    if (s.sell_quantity === 0) {
+      // A listing: nothing sold, so it does not count toward profit.
+      if (!listing || isNewer(s, listing)) listing = s;
+      continue;
+    }
     copiesSold += s.sell_quantity;
     totalReceived += (s.sell_quantity * s.sell_price * s.sell_percentage) / 100;
   }
@@ -482,7 +495,13 @@ export function summarize(card: Card, purchases: Purchase[], sales: Sale[]): Car
     average_cost: round2(averageCost),
     total_received: round2(totalReceived),
     realized_profit: round2(totalReceived - averageCost * copiesSold),
+    asking_price: listing ? round2((listing.sell_price * listing.sell_percentage) / 100) : null,
   };
+}
+
+/** Newer by sell date, then by when it was entered. */
+function isNewer(a: Sale, b: Sale) {
+  return a.sell_date !== b.sell_date ? a.sell_date > b.sell_date : a.created_at > b.created_at;
 }
 
 /** The store for this browser. Only call it from client components. */

@@ -33,6 +33,9 @@ export function CardTotals({ card }: { card: CardSummary }) {
       <Stat label="Avg cost" value={money(card.average_cost)} />
       <Stat label="Received" value={money(card.total_received)} />
       <Stat label="Profit" value={money(card.realized_profit)} tone={profitTone} />
+      {card.asking_price !== null && card.quantity_owned > 0 && (
+        <Stat label="Asking" value={money(card.asking_price)} />
+      )}
     </dl>
   );
 }
@@ -155,7 +158,9 @@ function EntryForm({
   const [percent, setPercent] = useState("100");
   const [quantity, setQuantity] = useState("1");
   const verb = kind === "buy" ? "Buy" : "Sell";
-  const total = (Number(price) || 0) * ((Number(percent) || 0) / 100) * (Number(quantity) || 0);
+  const each = (Number(price) || 0) * ((Number(percent) || 0) / 100);
+  const listing = kind === "sell" && quantity !== "" && Number(quantity) === 0;
+  const total = each * (Number(quantity) || 0);
 
   return (
     <form
@@ -189,8 +194,8 @@ function EntryForm({
           <input type="number" inputMode="decimal" required min={0} step="any" value={percent} onChange={(e) => setPercent(e.target.value)} className={inputClass} />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          {kind === "buy" ? "Quantity" : "Sold quantity"}
-          <input type="number" inputMode="numeric" required min={1} step={1} value={quantity} onChange={(e) => setQuantity(e.target.value)} className={inputClass} />
+          {kind === "buy" ? "Quantity" : "Sold quantity (0 = listed)"}
+          <input type="number" inputMode="numeric" required min={kind === "buy" ? 1 : 0} step={1} value={quantity} onChange={(e) => setQuantity(e.target.value)} className={inputClass} />
         </label>
       </div>
       <div className="flex items-center gap-3">
@@ -198,10 +203,10 @@ function EntryForm({
           type="submit"
           className={`rounded-lg px-3 py-1.5 text-sm font-medium text-white ${kind === "buy" ? "bg-blue-600" : "bg-green-700"}`}
         >
-          Add {kind}
+          {listing ? "Add listing" : `Add ${kind}`}
         </button>
         <span className="text-sm text-neutral-500">
-          {kind === "buy" ? "Cost" : "Received"}: {money(total)}
+          {listing ? `Asking: ${money(each)} each` : `${kind === "buy" ? "Cost" : "Received"}: ${money(total)}`}
         </span>
       </div>
     </form>
@@ -228,10 +233,17 @@ function EntryList({
         <ul className="mt-1 flex flex-col divide-y divide-neutral-200 text-sm dark:divide-neutral-800">
           {rows.map((r) => (
             <li key={r.id} className="flex items-center justify-between gap-2 py-1.5">
-              <span className="tabular-nums">
-                {r.date} · {r.quantity} × {money(r.price)} at {r.percent}% ={" "}
-                <span className="font-medium">{money((r.quantity * r.price * r.percent) / 100)}</span>
-              </span>
+              {r.quantity === 0 ? (
+                <span className="tabular-nums">
+                  {r.date} · Listed, not sold · {money(r.price)} at {r.percent}% ={" "}
+                  <span className="font-medium">{money((r.price * r.percent) / 100)} each</span>
+                </span>
+              ) : (
+                <span className="tabular-nums">
+                  {r.date} · {r.quantity} × {money(r.price)} at {r.percent}% ={" "}
+                  <span className="font-medium">{money((r.quantity * r.price * r.percent) / 100)}</span>
+                </span>
+              )}
               <button type="button" onClick={() => onDelete(r.id)} className="shrink-0 text-red-600" aria-label={`Delete ${title.toLowerCase().slice(0, -1)} from ${r.date}`}>
                 Delete
               </button>
