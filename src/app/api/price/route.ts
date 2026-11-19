@@ -1,5 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { allowLookup } from "@/lib/pricing/rate-limit";
 import { POKEMON_TCG_API, buildQuery, toMatches, type PriceLookup } from "@/lib/pricing/tcgplayer";
+
+const MAX_NAME = 100;
+const MAX_NUMBER = 30;
 
 // GET /api/price?name=Charizard&number=4/102
 // Looks up TCGplayer prices for a raw card through the Pokemon TCG API.
@@ -9,6 +13,17 @@ export async function GET(request: NextRequest) {
   const name = request.nextUrl.searchParams.get("name")?.trim() ?? "";
   const number = request.nextUrl.searchParams.get("number")?.trim() ?? "";
   if (!name) return NextResponse.json({ error: "Card name is required" }, { status: 400 });
+  if (name.length > MAX_NAME || number.length > MAX_NUMBER) {
+    return NextResponse.json({ error: "Card name or number is too long" }, { status: 400 });
+  }
+
+  const client = request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+  if (!allowLookup(client)) {
+    return NextResponse.json(
+      { error: "Too many price lookups, try again in a few minutes" },
+      { status: 429 },
+    );
+  }
 
   const url = new URL(POKEMON_TCG_API);
   url.searchParams.set("q", buildQuery(name, number));

@@ -256,4 +256,33 @@ describe("offline folders and cards", () => {
     expect(server.cards.size).toBe(1);
     expect(store.listFolders()).toHaveLength(1);
   });
+
+  it("wipes another account's data and queued changes instead of uploading them", async () => {
+    const storage = memoryStorage();
+    const outbox = new Outbox(storage);
+    const store = new LocalStore(storage, undefined, undefined, (c) => outbox.add(c));
+    store.createFolder({ name: "Synced by A" });
+    await syncNow({ store, outbox, backend: server, storage, userId: "user-a" });
+
+    // A goes offline and adds a folder, then B signs in on the same device.
+    store.createFolder({ name: "Not synced, belongs to A" });
+    expect(outbox.size).toBe(1);
+    const bServer = new FakeServer();
+    await syncNow({ store, outbox, backend: bServer, storage, userId: "user-b" });
+
+    expect(bServer.calls.filter((c) => c.startsWith("upsert"))).toEqual([]);
+    expect(store.listFolders()).toEqual([]);
+    expect(outbox.size).toBe(0);
+  });
+
+  it("keeps the same account's queued changes", async () => {
+    const storage = memoryStorage();
+    const outbox = new Outbox(storage);
+    const store = new LocalStore(storage, undefined, undefined, (c) => outbox.add(c));
+    await syncNow({ store, outbox, backend: server, storage, userId: "user-a" });
+    store.createFolder({ name: "Offline folder" });
+    await syncNow({ store, outbox, backend: server, storage, userId: "user-a" });
+
+    expect([...server.folders.values()].map((f) => f.name)).toEqual(["Offline folder"]);
+  });
 });

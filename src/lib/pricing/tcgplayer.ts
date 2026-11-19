@@ -64,6 +64,20 @@ interface ApiCard {
   tcgplayer?: { url?: string; updatedAt?: string; prices?: Record<string, ApiPrice> };
 }
 
+/** Only https links to TCGplayer, so a bad API answer can't link anywhere else. */
+export function safeTcgplayerUrl(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  try {
+    const u = new URL(v);
+    const host = u.hostname.toLowerCase();
+    const trusted = ["tcgplayer.com", "tcgplayer.pxf.io", "pokemontcg.io"];
+    if (u.protocol !== "https:") return null;
+    return trusted.some((d) => host === d || host.endsWith(`.${d}`)) ? u.href : null;
+  } catch {
+    return null;
+  }
+}
+
 const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 const isoDate = (d?: string) => (d ? d.replaceAll("/", "-") : null);
 
@@ -86,7 +100,7 @@ export function toMatches(cards: ApiCard[], cardNumber: string): PriceMatch[] {
         set: c.set?.name ?? "Unknown set",
         setTotal: num(c.set?.printedTotal),
         releaseDate: isoDate(c.set?.releaseDate),
-        url: c.tcgplayer?.url ?? null,
+        url: safeTcgplayerUrl(c.tcgplayer?.url),
         updatedAt: isoDate(c.tcgplayer?.updatedAt),
         prices,
       };
