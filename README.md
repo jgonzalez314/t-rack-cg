@@ -66,6 +66,46 @@ Open http://localhost:3000 and create an account.
 - **iPhone (Safari):** open the site, tap Share, then **Add to Home Screen**.
 - **Android (Chrome):** open the site, tap the menu, then **Install app**.
 
+## Using DynamoDB instead of the Supabase database (optional)
+
+The app can keep folders, cards, purchases and sales in Amazon DynamoDB.
+Sign-in still goes through Supabase Auth, so set up Supabase as above, but
+you do not need to run the SQL migrations.
+
+With DynamoDB the browser does not talk to the database. It sends changes
+to this app's server at `/api/sync`, which checks the Supabase session and
+reads and writes only that user's items. The rules the Postgres schema
+enforces (one entry per raw card or slab cert in a folder, never selling
+more than you bought, deleting a folder deletes its cards) are enforced in
+[`src/lib/dynamo/store.ts`](src/lib/dynamo/store.ts) instead.
+
+1. Create the table and an IAM policy for it:
+
+   ```bash
+   aws cloudformation deploy --stack-name t-rack-cg-data \
+     --template-file aws/dynamodb-table.yaml --capabilities CAPABILITY_IAM
+   aws cloudformation describe-stacks --stack-name t-rack-cg-data \
+     --query "Stacks[0].Outputs"
+   ```
+
+2. Create an IAM user (or role) for the app, attach the policy from the
+   outputs, and make an access key for it.
+3. Add these to `.env.local` (and to Vercel's environment variables):
+
+   ```bash
+   NEXT_PUBLIC_DATA_BACKEND=dynamodb
+   DYNAMODB_TABLE=<TableName from the outputs>
+   AWS_REGION=us-east-1
+   AWS_ACCESS_KEY_ID=...
+   AWS_SECRET_ACCESS_KEY=...
+   ```
+
+On-demand DynamoDB costs cents a month at this size, and the always-free
+tier (25 GB) covers most personal collections. Switching does not copy the Supabase
+database itself. Instead, the first sync on each device after switching
+uploads everything saved on that device, so open the app once on a device
+that is up to date before using it anywhere else.
+
 ## Working offline
 
 Folders and cards are always saved in the browser first, so you can create
