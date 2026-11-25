@@ -9,10 +9,18 @@ import { clearThisDevice, pendingChanges } from "@/lib/data/use-collection";
  */
 export function SignOutButton() {
   const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
+    setMessage(null);
+    // Signing out needs the server. Offline, the wipe would happen but the
+    // sign-out wouldn't, so wait until there is a connection.
+    if (!navigator.onLine) {
+      setMessage("Go online to sign out.");
+      return;
+    }
     setBusy(true);
     const pending = await pendingChanges();
     if (
@@ -24,15 +32,16 @@ export function SignOutButton() {
       setBusy(false);
       return;
     }
-    clearThisDevice();
+    await clearThisDevice();
     form.submit();
   }
 
   return (
-    <form action="/auth/signout" method="post" onSubmit={handleSubmit}>
+    <form action="/auth/signout" method="post" onSubmit={handleSubmit} className="text-right">
       <button type="submit" disabled={busy} className="text-[15px] font-medium text-accent">
         {busy ? "Signing out…" : "Sign out"}
       </button>
+      {message && <p className="text-xs text-muted">{message}</p>}
     </form>
   );
 }

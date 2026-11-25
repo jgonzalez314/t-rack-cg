@@ -27,10 +27,13 @@ const ACCOUNT_KEYS: [string, string][] = [
  * Wipes the signed-in account's folders, cards, queued changes and price
  * picks from this browser, so the next person to use it never sees them and
  * their changes never sync into someone else's account.
+ *
+ * The owner is kept on purpose. If anything for this account is written
+ * after the wipe (say, a sync that was still running), it stays marked as
+ * theirs, and the next sync by a different account wipes it again.
  */
 export function clearAccountData(storage: KeyValueStorage) {
   for (const [key, empty] of ACCOUNT_KEYS) storage.setItem(key, empty);
-  storage.setItem(OWNER_KEY, "");
 }
 
 export type BackendResult =

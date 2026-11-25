@@ -45,10 +45,13 @@ function setStatus(status: SyncStatus) {
 let syncing: Promise<void> | null = null;
 let syncAgain = false;
 let syncTimer: ReturnType<typeof setTimeout> | undefined;
+// Set once this device's data has been wiped for signing out. No sync may run
+// after that, or it would pull the account's data straight back.
+let signedOut = false;
 
 async function runSync() {
   const c = getClient();
-  if (!c.outbox) return;
+  if (!c.outbox || signedOut) return;
   if (syncing) {
     syncAgain = true;
     return syncing;
@@ -94,15 +97,20 @@ async function runSync() {
 export async function pendingChanges(): Promise<number> {
   const c = getClient();
   if (!c.outbox) return 0;
+  clearTimeout(syncTimer);
   if (c.outbox.size) await runSync().catch(() => {});
+  // A sync may already have been running with nothing to push. Let it finish
+  // so it can't write anything after the wipe.
+  else if (syncing) await syncing.catch(() => {});
   return c.outbox.size;
 }
 
 /** Wipes this account's data from the browser, for signing out. */
-export function clearThisDevice() {
+export async function clearThisDevice() {
+  signedOut = true;
   clearTimeout(syncTimer);
+  if (syncing) await syncing.catch(() => {});
   clearAccountData(window.localStorage);
-  notify();
 }
 
 /** Syncs soon, so a burst of changes goes out together. */

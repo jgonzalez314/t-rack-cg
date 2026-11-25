@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { LocalStore, type KeyValueStorage } from "./local-store";
 import { Outbox } from "./outbox";
-import { syncNow, type BackendResult, type SyncBackend } from "./sync";
+import { clearAccountData, OWNER_KEY, syncNow, type BackendResult, type SyncBackend } from "./sync";
 import type { Card, Folder, Purchase, Sale } from "./types";
 import type { Table } from "./local-store";
 
@@ -284,5 +284,26 @@ describe("offline folders and cards", () => {
     await syncNow({ store, outbox, backend: server, storage, userId: "user-a" });
 
     expect([...server.folders.values()].map((f) => f.name)).toEqual(["Offline folder"]);
+  });
+
+  it("still wipes data written after sign-out when another account signs in", async () => {
+    const storage = memoryStorage();
+    const outbox = new Outbox(storage);
+    const store = new LocalStore(storage, undefined, undefined, (c) => outbox.add(c));
+    store.createFolder({ name: "A's folder" });
+    await syncNow({ store, outbox, backend: server, storage, userId: "user-a" });
+
+    // A signs out, but a late write for A lands after the wipe.
+    clearAccountData(storage);
+    expect(store.listFolders()).toEqual([]);
+    expect(storage.getItem(OWNER_KEY)).toBe("user-a");
+    store.replaceAll(await server.fetchAll());
+    expect(store.listFolders()).toHaveLength(1);
+
+    const bServer = new FakeServer();
+    await syncNow({ store, outbox, backend: bServer, storage, userId: "user-b" });
+    expect(store.listFolders()).toEqual([]);
+    expect(bServer.calls.filter((c) => c.startsWith("upsert"))).toEqual([]);
+    expect(storage.getItem(OWNER_KEY)).toBe("user-b");
   });
 });
