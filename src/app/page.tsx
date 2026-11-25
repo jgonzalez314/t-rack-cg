@@ -1,4 +1,5 @@
 import { FolderList } from "@/components/FolderList";
+import { SignOutButton } from "@/components/SignOutButton";
 import { isLocalMode } from "@/lib/config";
 import { createClient } from "@/lib/supabase/server";
 
@@ -17,11 +18,7 @@ export default async function Home() {
       <header className="mb-4 flex items-center justify-between">
         <h1 className="text-[32px] font-bold tracking-tight">T-rack-CG</h1>
         {!isLocalMode && (
-          <form action="/auth/signout" method="post">
-            <button type="submit" className="text-[15px] font-medium text-accent">
-              Sign out
-            </button>
-          </form>
+          <SignOutButton />
         )}
       </header>
 

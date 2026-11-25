@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildQuery, parseCardNumber, printingLabel, sortPrintings, suggestedPrice, toMatches } from "./tcgplayer";
+import { allowLookup, RATE_LIMIT } from "./rate-limit";
+import { buildQuery, parseCardNumber, printingLabel, safeTcgplayerUrl, sortPrintings, suggestedPrice, toMatches } from "./tcgplayer";
 
 describe("parseCardNumber", () => {
   it("splits number and set size and drops leading zeros", () => {
@@ -48,5 +49,30 @@ describe("prices", () => {
     expect(sortPrintings({ reverseHolofoil: {}, normal: {}, holofoil: {} } as never)).toEqual(["holofoil", "normal", "reverseHolofoil"]);
     expect(printingLabel("reverseHolofoil")).toBe("Reverse Holofoil");
     expect(printingLabel("1stEditionHolofoil")).toBe("1st Edition Holofoil");
+  });
+});
+
+describe("safeTcgplayerUrl", () => {
+  it("keeps https links to TCGplayer and the Pokemon TCG API", () => {
+    expect(safeTcgplayerUrl("https://prices.pokemontcg.io/tcgplayer/base1-4")).toBe("https://prices.pokemontcg.io/tcgplayer/base1-4");
+    expect(safeTcgplayerUrl("https://www.tcgplayer.com/product/1")).toBe("https://www.tcgplayer.com/product/1");
+  });
+
+  it("drops anything else", () => {
+    expect(safeTcgplayerUrl("javascript:alert(1)")).toBeNull();
+    expect(safeTcgplayerUrl("http://tcgplayer.com/x")).toBeNull();
+    expect(safeTcgplayerUrl("https://tcgplayer.com.evil.example/x")).toBeNull();
+    expect(safeTcgplayerUrl("https://eviltcgplayer.com/x")).toBeNull();
+    expect(safeTcgplayerUrl(42)).toBeNull();
+  });
+});
+
+describe("allowLookup", () => {
+  it("limits each client per time window", () => {
+    const t = 1_000_000;
+    for (let i = 0; i < RATE_LIMIT.MAX_PER_WINDOW; i++) expect(allowLookup("a", t)).toBe(true);
+    expect(allowLookup("a", t)).toBe(false);
+    expect(allowLookup("b", t)).toBe(true);
+    expect(allowLookup("a", t + RATE_LIMIT.WINDOW_MS)).toBe(true);
   });
 });

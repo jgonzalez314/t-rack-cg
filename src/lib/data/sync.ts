@@ -5,10 +5,33 @@
 // can be made with no connection. Sync runs whenever the device is online.
 
 import type { Card, Folder, Purchase, Sale } from "./types";
-import type { Data, KeyValueStorage, LocalStore, Table } from "./local-store";
-import type { Outbox } from "./outbox";
+import { CACHE_KEY, PICK_KEY } from "@/lib/pricing/cache";
+import { STORAGE_KEY, type Data, type KeyValueStorage, type LocalStore, type Table } from "./local-store";
+import { OUTBOX_KEY, type Outbox } from "./outbox";
 
 export const SYNC_STATE_KEY = "t-rack-cg:sync:v1";
+/** The id of the account this device's saved data belongs to. */
+export const OWNER_KEY = "t-rack-cg:owner:v1";
+
+// Everything saved in this browser that belongs to one account. Settings are
+// left alone: they are per device, not per account.
+const ACCOUNT_KEYS: [string, string][] = [
+  [STORAGE_KEY, "{}"],
+  [OUTBOX_KEY, "[]"],
+  [SYNC_STATE_KEY, "{}"],
+  [CACHE_KEY, "{}"],
+  [PICK_KEY, "{}"],
+];
+
+/**
+ * Wipes the signed-in account's folders, cards, queued changes and price
+ * picks from this browser, so the next person to use it never sees them and
+ * their changes never sync into someone else's account.
+ */
+export function clearAccountData(storage: KeyValueStorage) {
+  for (const [key, empty] of ACCOUNT_KEYS) storage.setItem(key, empty);
+  storage.setItem(OWNER_KEY, "");
+}
 
 export type BackendResult =
   | { ok: true }
@@ -59,12 +82,22 @@ export async function syncNow(opts: {
   outbox: Outbox;
   backend: SyncBackend;
   storage: KeyValueStorage;
+  /** The signed-in user. Data saved here for a different user is wiped first. */
+  userId?: string;
   now?: () => Date;
 }): Promise<SyncResult> {
-  const { store, outbox, backend, storage } = opts;
+  const { store, outbox, backend, storage, userId } = opts;
   const now = opts.now ?? (() => new Date());
 
   try {
+    if (userId) {
+      const owner = storage.getItem(OWNER_KEY);
+      // Someone else's data is still here (they did not sign out, or their
+      // session ran out). Drop it rather than upload it into this account.
+      if (owner && owner !== userId) clearAccountData(storage);
+      storage.setItem(OWNER_KEY, userId);
+    }
+
     const state = readState(storage);
 
     // The first time sync runs, queue anything made before it was set up so
