@@ -3,7 +3,7 @@
 // instance, which is enough to stop one client hammering the endpoint.
 
 const WINDOW_MS = 10 * 60 * 1000;
-const MAX_PER_WINDOW = 120;
+const MAX_PER_WINDOW = 600;
 
 const hits = new Map<string, { count: number; start: number }>();
 
