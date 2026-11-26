@@ -277,7 +277,7 @@ function EntryForm({
         </p>
       )}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <label className="flex flex-col gap-1 text-xs font-medium text-ink-soft">
+        <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-ink-soft">
           {verb} date
           <input
             type="date"
@@ -287,7 +287,7 @@ function EntryForm({
             className={inputClass}
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium text-ink-soft">
+        <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-ink-soft">
           {verb} price ($ market)
           <input
             type="number"
@@ -300,7 +300,7 @@ function EntryForm({
             className={inputClass}
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium text-ink-soft">
+        <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-ink-soft">
           {verb} percentage (%)
           <input
             type="number"
@@ -313,7 +313,7 @@ function EntryForm({
             className={inputClass}
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium text-ink-soft">
+        <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-ink-soft">
           {kind === "buy" ? "Quantity" : "Sold quantity (0 = listed)"}
           <input
             type="number"
