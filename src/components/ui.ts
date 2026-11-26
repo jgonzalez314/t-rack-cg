@@ -17,6 +17,9 @@ export const chipClass =
 /** Blue pill for a grade, like PSA 10. */
 export const gradeChipClass =
   "rounded-md bg-accent-soft px-1.5 py-px text-[11px] font-semibold text-accent";
+/** Soft blue pill for going back a level, sized for a thumb (44px tall). */
+export const backButtonClass =
+  "inline-flex min-h-11 items-center gap-1.5 self-start rounded-xl bg-accent-soft px-4 py-2 text-[15px] font-semibold text-accent active:opacity-80";
 export const linkClass = "font-medium text-accent";
 export const dangerLinkClass = "font-medium text-neg";
 /** Segmented control (Raw / Slab). */
