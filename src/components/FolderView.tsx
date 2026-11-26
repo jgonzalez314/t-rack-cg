@@ -121,7 +121,7 @@ export function FolderView() {
   }
 
   const fieldLabel =
-    "flex flex-col gap-1 text-[13px] font-medium text-ink-soft";
+    "flex min-w-0 flex-col gap-1 text-[13px] font-medium text-ink-soft";
 
   return (
     <section className="flex flex-col gap-5 pb-20">
