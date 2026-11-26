@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { FolderList } from "@/components/FolderList";
 import { SignOutButton } from "@/components/SignOutButton";
 import { isLocalMode, isStaticPreview } from "@/lib/config";
@@ -28,7 +29,10 @@ export default async function Home() {
           {isStaticPreview ? (
             <p className="mt-1">
               This is a preview of the app. There is no sign-in, cards you add
-              are saved in this browser only, and price lookups are off.
+              are saved in this browser only, and price lookups are off.{" "}
+              <Link href="/login" className="font-medium underline">
+                See the sign-in screen
+              </Link>
             </p>
           ) : (
             <p className="mt-1">

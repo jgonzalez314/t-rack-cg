@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { buttonClass, inputClass } from "@/components/ui";
+import { isStaticPreview } from "@/lib/config";
 import { createClient } from "@/lib/supabase/client";
 
 type Mode = "signin" | "signup";
@@ -18,6 +20,13 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // The GitHub Pages preview shows this screen as a demo. It has no
+    // Supabase keys, so nothing is sent anywhere.
+    if (isStaticPreview) {
+      setError(null);
+      setNotice("Sign-in is off in this preview. This screen is a demo.");
+      return;
+    }
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -55,6 +64,19 @@ export default function LoginPage() {
       <p className="mb-8 text-sm text-muted">
         Track your Pokemon cards, raw and graded.
       </p>
+
+      {isStaticPreview && (
+        <div className="mb-6 rounded-2xl border border-warn-line bg-warn-soft px-4 py-3 text-sm text-warn">
+          <p className="font-medium">Demo only</p>
+          <p className="mt-1">
+            This is how the sign-in screen looks. Sign-in is off in this
+            preview, so nothing you type is sent.{" "}
+            <Link href="/" className="font-medium underline">
+              Back to the preview
+            </Link>
+          </p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-sm font-medium text-ink-soft">
@@ -100,6 +122,7 @@ export default function LoginPage() {
         onClick={() => {
           setMode(mode === "signin" ? "signup" : "signin");
           setError(null);
+          setNotice(null);
         }}
         className="mt-4 text-sm font-medium text-accent"
       >
