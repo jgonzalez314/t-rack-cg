@@ -35,18 +35,35 @@ const securityHeaders = [
   },
 ];
 
-const nextConfig: NextConfig = {
-  poweredByHeader: false,
-  async headers() {
-    return [
-      { source: "/:path*", headers: securityHeaders },
-      {
-        // Always check for a new service worker, so updates reach phones.
-        source: "/sw.js",
-        headers: [{ key: "Cache-Control", value: "no-cache" }],
-      },
-    ];
-  },
+// The GitHub Pages preview (npm run build:pages) is a static export served
+// from a sub-path. Static hosting can't send headers, so those are left out.
+const staticPreview = process.env.NEXT_PUBLIC_STATIC_PREVIEW === "true";
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
+const previewConfig: NextConfig = {
+  output: "export",
+  basePath: basePath || undefined,
+  // Saves each page as folder/index.html, which GitHub Pages serves at /folder/.
+  trailingSlash: true,
+  images: { unoptimized: true },
 };
+
+const nextConfig: NextConfig = staticPreview
+  ? { poweredByHeader: false, ...previewConfig }
+  : {
+      poweredByHeader: false,
+      headers,
+    };
+
+async function headers() {
+  return [
+    { source: "/:path*", headers: securityHeaders },
+    {
+      // Always check for a new service worker, so updates reach phones.
+      source: "/sw.js",
+      headers: [{ key: "Cache-Control", value: "no-cache" }],
+    },
+  ];
+}
 
 export default nextConfig;

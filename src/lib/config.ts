@@ -18,3 +18,12 @@ export const isLocalMode =
  */
 export const dataBackend: "supabase" | "dynamodb" =
   process.env.NEXT_PUBLIC_DATA_BACKEND === "dynamodb" ? "dynamodb" : "supabase";
+
+/**
+ * The GitHub Pages preview: a static copy of the app in local mode, served
+ * from a sub-path (e.g. /t-rack-cg). It has no server, so features that need
+ * one, such as price lookups, are turned off. Built by `npm run build:pages`.
+ */
+export const isStaticPreview =
+  process.env.NEXT_PUBLIC_STATIC_PREVIEW === "true";
+export const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";

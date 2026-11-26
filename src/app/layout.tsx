@@ -1,19 +1,21 @@
 import type { Metadata, Viewport } from "next";
 import { ServiceWorker } from "@/components/ServiceWorker";
+import { basePath, isStaticPreview } from "@/lib/config";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "T-rack-CG",
   description: "Track your trading card collection, raw and graded.",
-  manifest: "/manifest.webmanifest",
+  // The preview on GitHub Pages is not installable, so it has no manifest.
+  manifest: isStaticPreview ? undefined : "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     title: "T-rack-CG",
     statusBarStyle: "default",
   },
   icons: {
-    icon: "/icons/icon-192.png",
-    apple: "/icons/apple-touch-icon.png",
+    icon: `${basePath}/icons/icon-192.png`,
+    apple: `${basePath}/icons/apple-touch-icon.png`,
   },
 };
 
