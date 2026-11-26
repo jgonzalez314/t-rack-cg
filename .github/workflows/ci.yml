@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   test:
-    name: Typecheck, lint, test and build
+    name: Typecheck, format, lint, test and build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -30,6 +30,9 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Check formatting (Prettier)
+        run: npm run format:check
 
       - name: Lint
         run: npm run lint
