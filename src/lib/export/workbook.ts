@@ -5,7 +5,16 @@
 import { summarize, type Data } from "@/lib/data/local-store";
 import type { Card, CardSummary, Folder } from "@/lib/data/types";
 import type { SavedSuggestion } from "@/lib/pricing/cache";
-import { buildXlsx, columnName, excelDate, excelDateFromIso, type Cell, type CellStyle, type Row, type Sheet } from "./xlsx";
+import {
+  buildXlsx,
+  columnName,
+  excelDate,
+  excelDateFromIso,
+  type Cell,
+  type CellStyle,
+  type Row,
+  type Sheet,
+} from "./xlsx";
 
 const CURRENCY = "$#,##0.00";
 const PROFIT = "$#,##0.00;[Red]-$#,##0.00";
@@ -21,12 +30,25 @@ const header: CellStyle = {
   borderBottom: true,
 };
 const totalFill = "DDEBF7";
-const total = (numFmt?: string): CellStyle => ({ bold: true, fill: totalFill, borderTop: true, numFmt });
+const total = (numFmt?: string): CellStyle => ({
+  bold: true,
+  fill: totalFill,
+  borderTop: true,
+  numFmt,
+});
 
-const money = (value: number | null | undefined, numFmt = CURRENCY): Cell => ({ value, style: { numFmt } });
-const int = (value: number | null | undefined): Cell => ({ value, style: { numFmt: INT } });
+const money = (value: number | null | undefined, numFmt = CURRENCY): Cell => ({
+  value,
+  style: { numFmt },
+});
+const int = (value: number | null | undefined): Cell => ({
+  value,
+  style: { numFmt: INT },
+});
 const date = (iso: string | null | undefined): Cell =>
-  iso && /^\d{4}-\d{2}-\d{2}/.test(iso) ? { value: excelDateFromIso(iso.slice(0, 10)), style: { numFmt: DATE } } : {};
+  iso && /^\d{4}-\d{2}-\d{2}/.test(iso)
+    ? { value: excelDateFromIso(iso.slice(0, 10)), style: { numFmt: DATE } }
+    : {};
 /** Percent stored as 80 in the app; Excel wants 0.8. */
 const percent = (p: number): Cell => ({
   value: p / 100,
@@ -60,7 +82,10 @@ function table(name: string, columns: Column[], rows: Row[]): Sheet {
         if (c.total === "sum") {
           const values = rows.map((r) => {
             const cell = r[i];
-            const v = cell && typeof cell === "object" && !(cell instanceof Date) ? cell.value : cell;
+            const v =
+              cell && typeof cell === "object" && !(cell instanceof Date)
+                ? cell.value
+                : cell;
             return typeof v === "number" ? v : 0;
           });
           const col = columnName(i);
@@ -91,7 +116,10 @@ export interface ExportOptions {
   now?: Date;
 }
 
-export function buildWorkbookSheets(data: Data, options: ExportOptions = {}): Sheet[] {
+export function buildWorkbookSheets(
+  data: Data,
+  options: ExportOptions = {},
+): Sheet[] {
   const suggestions = options.suggestions ?? {};
   const now = options.now ?? new Date();
   const folders = data.folders
@@ -119,7 +147,8 @@ export function buildWorkbookSheets(data: Data, options: ExportOptions = {}): Sh
   // ---- Summary ----
   const summaryRows: Row[] = folders.map((f: Folder) => {
     const inFolder = cards.filter((c) => c.folder_id === f.id);
-    const sum = (fn: (c: CardSummary) => number) => round2(inFolder.reduce((n, c) => n + fn(c), 0));
+    const sum = (fn: (c: CardSummary) => number) =>
+      round2(inFolder.reduce((n, c) => n + fn(c), 0));
     const priced = inFolder.filter((c) => suggestedValue(c) !== null);
     return [
       f.name,
@@ -130,8 +159,15 @@ export function buildWorkbookSheets(data: Data, options: ExportOptions = {}): Sh
       int(sum((c) => c.quantity_owned)),
       money(sum((c) => c.total_cost)),
       money(sum((c) => c.total_received)),
-      money(sum((c) => c.realized_profit), PROFIT),
-      money(priced.length ? round2(priced.reduce((n, c) => n + (suggestedValue(c) ?? 0), 0)) : null),
+      money(
+        sum((c) => c.realized_profit),
+        PROFIT,
+      ),
+      money(
+        priced.length
+          ? round2(priced.reduce((n, c) => n + (suggestedValue(c) ?? 0), 0))
+          : null,
+      ),
     ];
   });
   const summary = table(
@@ -146,15 +182,29 @@ export function buildWorkbookSheets(data: Data, options: ExportOptions = {}): Sh
       { title: "Spent", total: "sum", numFmt: CURRENCY, width: 14 },
       { title: "Received", total: "sum", numFmt: CURRENCY, width: 14 },
       { title: "Profit", total: "sum", numFmt: PROFIT, width: 14 },
-      { title: "Suggested value (raw, owned)", total: "sum", numFmt: CURRENCY, width: 16 },
+      {
+        title: "Suggested value (raw, owned)",
+        total: "sum",
+        numFmt: CURRENCY,
+        width: 16,
+      },
     ],
     summaryRows,
   );
   const note: CellStyle = { color: "595959" };
   summary.rows.push(
     [],
-    [{ value: "Exported", style: { bold: true } }, { value: excelDate(now), style: { numFmt: DATE, align: "left" } }],
-    [{ value: "Profit uses average cost. Listings (sold quantity 0) are not counted as sales.", style: note }],
+    [
+      { value: "Exported", style: { bold: true } },
+      { value: excelDate(now), style: { numFmt: DATE, align: "left" } },
+    ],
+    [
+      {
+        value:
+          "Profit uses average cost. Listings (sold quantity 0) are not counted as sales.",
+        style: note,
+      },
+    ],
     [
       {
         value:
@@ -216,7 +266,10 @@ export function buildWorkbookSheets(data: Data, options: ExportOptions = {}): Sh
   );
 
   // ---- Buys ----
-  const inOrder = <T extends { card_id: string; created_at: string }>(rows: T[], dateOf: (r: T) => string) =>
+  const inOrder = <T extends { card_id: string; created_at: string }>(
+    rows: T[],
+    dateOf: (r: T) => string,
+  ) =>
     rows
       .filter((r) => cardById.has(r.card_id))
       .sort(
@@ -226,23 +279,29 @@ export function buildWorkbookSheets(data: Data, options: ExportOptions = {}): Sh
           a.created_at.localeCompare(b.created_at),
       );
 
-  const buyRows: Row[] = inOrder(data.purchases, (p) => p.buy_date).map((p, i) => {
-    const c = cardById.get(p.card_id)!;
-    const r = i + 2;
-    const each = round2((p.buy_price * p.buy_percentage) / 100);
-    return [
-      folderName(c),
-      c.name,
-      c.card_number,
-      cardDetails(c),
-      date(p.buy_date),
-      money(p.buy_price),
-      percent(p.buy_percentage),
-      { formula: `F${r}*G${r}`, value: each, style: { numFmt: CURRENCY } },
-      int(p.quantity),
-      { formula: `F${r}*G${r}*I${r}`, value: round2((p.buy_price * p.buy_percentage * p.quantity) / 100), style: { numFmt: CURRENCY } },
-    ];
-  });
+  const buyRows: Row[] = inOrder(data.purchases, (p) => p.buy_date).map(
+    (p, i) => {
+      const c = cardById.get(p.card_id)!;
+      const r = i + 2;
+      const each = round2((p.buy_price * p.buy_percentage) / 100);
+      return [
+        folderName(c),
+        c.name,
+        c.card_number,
+        cardDetails(c),
+        date(p.buy_date),
+        money(p.buy_price),
+        percent(p.buy_percentage),
+        { formula: `F${r}*G${r}`, value: each, style: { numFmt: CURRENCY } },
+        int(p.quantity),
+        {
+          formula: `F${r}*G${r}*I${r}`,
+          value: round2((p.buy_price * p.buy_percentage * p.quantity) / 100),
+          style: { numFmt: CURRENCY },
+        },
+      ];
+    },
+  );
   const buys = table(
     "Buys",
     [
@@ -261,27 +320,35 @@ export function buildWorkbookSheets(data: Data, options: ExportOptions = {}): Sh
   );
 
   // ---- Sells ----
-  const sellRows: Row[] = inOrder(data.sales, (s) => s.sell_date).map((s, i) => {
-    const c = cardById.get(s.card_id)!;
-    const r = i + 2;
-    return [
-      folderName(c),
-      c.name,
-      c.card_number,
-      cardDetails(c),
-      date(s.sell_date),
-      s.sell_quantity === 0 ? "Listed" : "Sold",
-      money(s.sell_price),
-      percent(s.sell_percentage),
-      { formula: `G${r}*H${r}`, value: round2((s.sell_price * s.sell_percentage) / 100), style: { numFmt: CURRENCY } },
-      int(s.sell_quantity),
-      {
-        formula: `G${r}*H${r}*J${r}`,
-        value: round2((s.sell_price * s.sell_percentage * s.sell_quantity) / 100),
-        style: { numFmt: CURRENCY },
-      },
-    ];
-  });
+  const sellRows: Row[] = inOrder(data.sales, (s) => s.sell_date).map(
+    (s, i) => {
+      const c = cardById.get(s.card_id)!;
+      const r = i + 2;
+      return [
+        folderName(c),
+        c.name,
+        c.card_number,
+        cardDetails(c),
+        date(s.sell_date),
+        s.sell_quantity === 0 ? "Listed" : "Sold",
+        money(s.sell_price),
+        percent(s.sell_percentage),
+        {
+          formula: `G${r}*H${r}`,
+          value: round2((s.sell_price * s.sell_percentage) / 100),
+          style: { numFmt: CURRENCY },
+        },
+        int(s.sell_quantity),
+        {
+          formula: `G${r}*H${r}*J${r}`,
+          value: round2(
+            (s.sell_price * s.sell_percentage * s.sell_quantity) / 100,
+          ),
+          style: { numFmt: CURRENCY },
+        },
+      ];
+    },
+  );
   const sells = table(
     "Sells",
     [
@@ -303,7 +370,10 @@ export function buildWorkbookSheets(data: Data, options: ExportOptions = {}): Sh
   return [summary, cardsSheet, buys, sells];
 }
 
-export function exportFileName(folder: Folder | undefined, now = new Date()): string {
+export function exportFileName(
+  folder: Folder | undefined,
+  now = new Date(),
+): string {
   const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const slug = folder
     ? "-" +
@@ -316,6 +386,12 @@ export function exportFileName(folder: Folder | undefined, now = new Date()): st
   return `t-rack-cg${slug === "-" ? "" : slug}-${day}.xlsx`;
 }
 
-export function buildWorkbook(data: Data, options: ExportOptions = {}): Uint8Array {
-  return buildXlsx(buildWorkbookSheets(data, options), { title: "T-rack-CG collection", created: options.now });
+export function buildWorkbook(
+  data: Data,
+  options: ExportOptions = {},
+): Uint8Array {
+  return buildXlsx(buildWorkbookSheets(data, options), {
+    title: "T-rack-CG collection",
+    created: options.now,
+  });
 }

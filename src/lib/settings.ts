@@ -21,7 +21,8 @@ export function parseSettings(raw: string | null): Settings {
   try {
     const v = JSON.parse(raw ?? "{}") as Partial<Settings>;
     return {
-      sellPriceSource: v.sellPriceSource === "tcgplayer" ? "tcgplayer" : "manual",
+      sellPriceSource:
+        v.sellPriceSource === "tcgplayer" ? "tcgplayer" : "manual",
     };
   } catch {
     return DEFAULTS;
@@ -36,7 +37,8 @@ function read(): Settings {
     // Storage blocked: use the defaults.
   }
   // Return the same object while nothing changed, as useSyncExternalStore needs.
-  if (!cached || cached.raw !== raw) cached = { raw, value: parseSettings(raw) };
+  if (!cached || cached.raw !== raw)
+    cached = { raw, value: parseSettings(raw) };
   return cached.value;
 }
 

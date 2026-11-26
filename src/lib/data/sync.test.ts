@@ -7,7 +7,10 @@ import type { Table } from "./local-store";
 
 function memoryStorage(): KeyValueStorage {
   const map = new Map<string, string>();
-  return { getItem: (k) => map.get(k) ?? null, setItem: (k, v) => void map.set(k, v) };
+  return {
+    getItem: (k) => map.get(k) ?? null,
+    setItem: (k, v) => void map.set(k, v),
+  };
 }
 
 /** A pretend Supabase that follows the same unique rules as the database. */
@@ -23,12 +26,16 @@ class FakeServer implements SyncBackend {
     if (!this.online) throw new TypeError("Failed to fetch");
   }
 
-  async upsert(table: Table, row: Folder | Card | Purchase | Sale): Promise<BackendResult> {
+  async upsert(
+    table: Table,
+    row: Folder | Card | Purchase | Sale,
+  ): Promise<BackendResult> {
     this.check();
     this.calls.push(`upsert ${table} ${row.id}`);
     if (table === "purchases" || table === "sales") {
       const r = row as Purchase | Sale;
-      if (!this.cards.has(r.card_id)) return { ok: false, message: "card is gone", temporary: false };
+      if (!this.cards.has(r.card_id))
+        return { ok: false, message: "card is gone", temporary: false };
       if (table === "purchases") this.purchases.set(r.id, r as Purchase);
       else this.sales.set(r.id, r as Sale);
       return { ok: true };
@@ -41,8 +48,17 @@ class FakeServer implements SyncBackend {
     if (!this.folders.has(card.folder_id)) {
       return { ok: false, message: "folder is gone", temporary: false };
     }
-    if ([...this.cards.values()].some((c) => c.id !== card.id && sameCard(c, card))) {
-      return { ok: false, message: "duplicate", duplicate: true, temporary: false };
+    if (
+      [...this.cards.values()].some(
+        (c) => c.id !== card.id && sameCard(c, card),
+      )
+    ) {
+      return {
+        ok: false,
+        message: "duplicate",
+        duplicate: true,
+        temporary: false,
+      };
     }
     this.cards.set(card.id, card);
     return { ok: true };
@@ -53,7 +69,8 @@ class FakeServer implements SyncBackend {
     this.calls.push(`delete ${table} ${id}`);
     if (table === "folders") {
       this.folders.delete(id);
-      for (const [cid, c] of this.cards) if (c.folder_id === id) this.cards.delete(cid);
+      for (const [cid, c] of this.cards)
+        if (c.folder_id === id) this.cards.delete(cid);
     } else if (table === "cards") {
       this.cards.delete(id);
     } else {
@@ -104,7 +121,13 @@ function device(name: string, server: FakeServer) {
 }
 
 const charizard = (folder_id: string) =>
-  ({ type: "raw", folder_id, name: "Charizard", card_number: "4/102", condition: "NM" }) as const;
+  ({
+    type: "raw",
+    folder_id,
+    name: "Charizard",
+    card_number: "4/102",
+    condition: "NM",
+  }) as const;
 
 let server: FakeServer;
 
@@ -119,22 +142,38 @@ describe("offline buys and sells", () => {
     server.online = false;
     const folder = phone.store.createFolder({ name: "Binder" });
     const card = phone.store.addCard(charizard(folder.id));
-    const buy = phone.store.addPurchase({ card_id: card.id, buy_date: "2026-11-01", buy_price: 100, buy_percentage: 80, quantity: 2 });
-    phone.store.addSale({ card_id: card.id, sell_date: "2026-11-10", sell_price: 150, sell_percentage: 90, sell_quantity: 1 });
+    const buy = phone.store.addPurchase({
+      card_id: card.id,
+      buy_date: "2026-11-01",
+      buy_price: 100,
+      buy_percentage: 80,
+      quantity: 2,
+    });
+    phone.store.addSale({
+      card_id: card.id,
+      sell_date: "2026-11-10",
+      sell_price: 150,
+      sell_percentage: 90,
+      sell_quantity: 1,
+    });
     phone.store.updatePurchase(buy.id, { quantity: 3 });
 
     server.online = true;
     expect((await phone.sync()).status).toBe("synced");
-    expect(server.calls.map((c) => c.split(" ").slice(0, 2).join(" "))).toEqual([
-      "upsert folders",
-      "upsert cards",
-      "upsert purchases",
-      "upsert sales",
-    ]);
+    expect(server.calls.map((c) => c.split(" ").slice(0, 2).join(" "))).toEqual(
+      ["upsert folders", "upsert cards", "upsert purchases", "upsert sales"],
+    );
 
     await laptop.sync();
     const [s] = laptop.store.listCardSummaries(folder.id);
-    expect(s).toMatchObject({ copies_bought: 3, copies_sold: 1, quantity_owned: 2, average_cost: 80, total_received: 135, realized_profit: 55 });
+    expect(s).toMatchObject({
+      copies_bought: 3,
+      copies_sold: 1,
+      quantity_owned: 2,
+      average_cost: 80,
+      total_received: 135,
+      realized_profit: 55,
+    });
   });
 
   it("drops queued buys and sells of a card deleted offline", async () => {
@@ -143,9 +182,17 @@ describe("offline buys and sells", () => {
     await phone.sync();
     server.online = false;
     const card = phone.store.addCard(charizard(folder.id));
-    phone.store.addPurchase({ card_id: card.id, buy_date: "2026-11-01", buy_price: 1, buy_percentage: 100, quantity: 1 });
+    phone.store.addPurchase({
+      card_id: card.id,
+      buy_date: "2026-11-01",
+      buy_price: 1,
+      buy_percentage: 100,
+      quantity: 1,
+    });
     phone.store.deleteCard(card.id);
-    expect(phone.outbox.list()).toEqual([{ kind: "delete", table: "cards", id: card.id }]);
+    expect(phone.outbox.list()).toEqual([
+      { kind: "delete", table: "cards", id: card.id },
+    ]);
   });
 });
 
@@ -159,13 +206,18 @@ describe("offline folders and cards", () => {
     phone.store.updateFolder(folder.id, { name: "Main binder" });
 
     expect(await phone.sync()).toEqual({ status: "offline" });
-    expect(phone.store.listFolders().map((f) => f.name)).toEqual(["Main binder"]);
+    expect(phone.store.listFolders().map((f) => f.name)).toEqual([
+      "Main binder",
+    ]);
     expect(phone.outbox.size).toBe(2);
 
     server.online = true;
     expect((await phone.sync()).status).toBe("synced");
     // The folder goes first even though it was edited after the card was added.
-    expect(server.calls).toEqual(["upsert folders phone-1", "upsert cards phone-2"]);
+    expect(server.calls).toEqual([
+      "upsert folders phone-1",
+      "upsert cards phone-2",
+    ]);
     expect(server.folders.get(folder.id)?.name).toBe("Main binder");
     expect(phone.outbox.size).toBe(0);
   });
@@ -178,7 +230,9 @@ describe("offline folders and cards", () => {
     await laptop.sync();
 
     await phone.sync();
-    expect(phone.store.listFolders().map((f) => f.name)).toEqual(["Trade binder"]);
+    expect(phone.store.listFolders().map((f) => f.name)).toEqual([
+      "Trade binder",
+    ]);
     expect(phone.store.listCardSummaries(folder.id)).toHaveLength(1);
   });
 
@@ -189,7 +243,9 @@ describe("offline folders and cards", () => {
     const folder = phone.store.createFolder({ name: "Oops" });
     phone.store.addCard(charizard(folder.id));
     phone.store.deleteFolder(folder.id);
-    expect(phone.outbox.list()).toEqual([{ kind: "delete", table: "folders", id: folder.id }]);
+    expect(phone.outbox.list()).toEqual([
+      { kind: "delete", table: "folders", id: folder.id },
+    ]);
   });
 
   it("merges a raw card that another device added to the same folder", async () => {
@@ -202,7 +258,13 @@ describe("offline folders and cards", () => {
     // Both add the same card; the laptop syncs first.
     server.online = false;
     const fromPhone = phone.store.addCard(charizard(folder.id));
-    phone.store.addPurchase({ card_id: fromPhone.id, buy_date: "2026-11-01", buy_price: 100, buy_percentage: 80, quantity: 1 });
+    phone.store.addPurchase({
+      card_id: fromPhone.id,
+      buy_date: "2026-11-01",
+      buy_price: 100,
+      buy_percentage: 80,
+      quantity: 1,
+    });
     server.online = true;
     const fromLaptop = laptop.store.addCard(charizard(folder.id));
     await laptop.sync();
@@ -228,7 +290,10 @@ describe("offline folders and cards", () => {
     await laptop.sync();
 
     const result = await phone.sync();
-    expect(result).toMatchObject({ status: "error", message: expect.stringContaining("folder is gone") });
+    expect(result).toMatchObject({
+      status: "error",
+      message: expect.stringContaining("folder is gone"),
+    });
     expect(phone.outbox.size).toBe(0);
     expect(phone.store.listFolders()).toEqual([]);
   });
@@ -236,7 +301,11 @@ describe("offline folders and cards", () => {
   it("keeps changes queued when the server has a temporary problem", async () => {
     const phone = device("phone", server);
     phone.store.createFolder({ name: "Binder" });
-    server.upsert = async () => ({ ok: false, message: "timeout", temporary: true });
+    server.upsert = async () => ({
+      ok: false,
+      message: "timeout",
+      temporary: true,
+    });
     expect(await phone.sync()).toEqual({ status: "error", message: "timeout" });
     expect(phone.outbox.size).toBe(1);
     expect(phone.store.listFolders()).toHaveLength(1);
@@ -249,10 +318,14 @@ describe("offline folders and cards", () => {
     before.addCard(charizard(folder.id));
 
     const outbox = new Outbox(storage);
-    const store = new LocalStore(storage, undefined, undefined, (c) => outbox.add(c));
+    const store = new LocalStore(storage, undefined, undefined, (c) =>
+      outbox.add(c),
+    );
     await syncNow({ store, outbox, backend: server, storage });
 
-    expect([...server.folders.values()].map((f) => f.name)).toEqual(["Made in local mode"]);
+    expect([...server.folders.values()].map((f) => f.name)).toEqual([
+      "Made in local mode",
+    ]);
     expect(server.cards.size).toBe(1);
     expect(store.listFolders()).toHaveLength(1);
   });
@@ -260,15 +333,29 @@ describe("offline folders and cards", () => {
   it("wipes another account's data and queued changes instead of uploading them", async () => {
     const storage = memoryStorage();
     const outbox = new Outbox(storage);
-    const store = new LocalStore(storage, undefined, undefined, (c) => outbox.add(c));
+    const store = new LocalStore(storage, undefined, undefined, (c) =>
+      outbox.add(c),
+    );
     store.createFolder({ name: "Synced by A" });
-    await syncNow({ store, outbox, backend: server, storage, userId: "user-a" });
+    await syncNow({
+      store,
+      outbox,
+      backend: server,
+      storage,
+      userId: "user-a",
+    });
 
     // A goes offline and adds a folder, then B signs in on the same device.
     store.createFolder({ name: "Not synced, belongs to A" });
     expect(outbox.size).toBe(1);
     const bServer = new FakeServer();
-    await syncNow({ store, outbox, backend: bServer, storage, userId: "user-b" });
+    await syncNow({
+      store,
+      outbox,
+      backend: bServer,
+      storage,
+      userId: "user-b",
+    });
 
     expect(bServer.calls.filter((c) => c.startsWith("upsert"))).toEqual([]);
     expect(store.listFolders()).toEqual([]);
@@ -278,11 +365,27 @@ describe("offline folders and cards", () => {
   it("keeps the same account's queued changes", async () => {
     const storage = memoryStorage();
     const outbox = new Outbox(storage);
-    const store = new LocalStore(storage, undefined, undefined, (c) => outbox.add(c));
-    await syncNow({ store, outbox, backend: server, storage, userId: "user-a" });
+    const store = new LocalStore(storage, undefined, undefined, (c) =>
+      outbox.add(c),
+    );
+    await syncNow({
+      store,
+      outbox,
+      backend: server,
+      storage,
+      userId: "user-a",
+    });
     store.createFolder({ name: "Offline folder" });
-    await syncNow({ store, outbox, backend: server, storage, userId: "user-a" });
+    await syncNow({
+      store,
+      outbox,
+      backend: server,
+      storage,
+      userId: "user-a",
+    });
 
-    expect([...server.folders.values()].map((f) => f.name)).toEqual(["Offline folder"]);
+    expect([...server.folders.values()].map((f) => f.name)).toEqual([
+      "Offline folder",
+    ]);
   });
 });

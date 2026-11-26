@@ -17,9 +17,7 @@ export default async function Home() {
     <main className="mx-auto flex min-h-dvh max-w-2xl flex-col px-4 pt-[max(1.5rem,env(safe-area-inset-top))] pb-10">
       <header className="mb-4 flex items-center justify-between">
         <h1 className="text-[32px] font-bold tracking-tight">T-rack-CG</h1>
-        {!isLocalMode && (
-          <SignOutButton />
-        )}
+        {!isLocalMode && <SignOutButton />}
       </header>
 
       {isLocalMode ? (

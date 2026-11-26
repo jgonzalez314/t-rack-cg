@@ -1,6 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { allowLookup } from "@/lib/pricing/rate-limit";
-import { POKEMON_TCG_API, buildQuery, toMatches, type PriceLookup } from "@/lib/pricing/tcgplayer";
+import {
+  POKEMON_TCG_API,
+  buildQuery,
+  toMatches,
+  type PriceLookup,
+} from "@/lib/pricing/tcgplayer";
 
 const MAX_NAME = 100;
 const MAX_NUMBER = 30;
@@ -12,12 +17,20 @@ const MAX_NUMBER = 30;
 export async function GET(request: NextRequest) {
   const name = request.nextUrl.searchParams.get("name")?.trim() ?? "";
   const number = request.nextUrl.searchParams.get("number")?.trim() ?? "";
-  if (!name) return NextResponse.json({ error: "Card name is required" }, { status: 400 });
+  if (!name)
+    return NextResponse.json(
+      { error: "Card name is required" },
+      { status: 400 },
+    );
   if (name.length > MAX_NAME || number.length > MAX_NUMBER) {
-    return NextResponse.json({ error: "Card name or number is too long" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Card name or number is too long" },
+      { status: 400 },
+    );
   }
 
-  const client = request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+  const client =
+    request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
   if (!allowLookup(client)) {
     return NextResponse.json(
       { error: "Too many price lookups, try again in a few minutes" },
@@ -43,11 +56,17 @@ export async function GET(request: NextRequest) {
     });
     if (!res.ok) {
       const message =
-        res.status === 429 ? "Too many price lookups today, try again later" : "Price lookup failed";
+        res.status === 429
+          ? "Too many price lookups today, try again later"
+          : "Price lookup failed";
       return NextResponse.json({ error: message }, { status: 502 });
     }
-    const body = (await res.json()) as { data?: Parameters<typeof toMatches>[0] };
-    const result: PriceLookup = { matches: toMatches(body.data ?? [], number).slice(0, 10) };
+    const body = (await res.json()) as {
+      data?: Parameters<typeof toMatches>[0];
+    };
+    const result: PriceLookup = {
+      matches: toMatches(body.data ?? [], number).slice(0, 10),
+    };
     return NextResponse.json(result);
   } catch {
     return NextResponse.json({ error: "Price lookup failed" }, { status: 502 });

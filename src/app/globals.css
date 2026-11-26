@@ -74,8 +74,8 @@ body {
   background: var(--color-app);
   color: var(--color-ink);
   font-family:
-    -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, "Segoe UI", Roboto,
-    sans-serif;
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui,
+    "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
