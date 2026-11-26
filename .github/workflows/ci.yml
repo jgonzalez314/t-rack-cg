@@ -43,3 +43,9 @@ jobs:
       # No Supabase keys are set here, so the app builds in local mode.
       - name: Build
         run: npm run build
+
+      # The static GitHub Pages preview (see pages.yml) must keep building too.
+      - name: Build GitHub Pages preview
+        run: npm run build:pages
+        env:
+          BASE_PATH: /t-rack-cg

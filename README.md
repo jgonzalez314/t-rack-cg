@@ -182,12 +182,28 @@ Listings (sold quantity 0) are left out of profit. The newest listing's
 The database blocks selling more copies than were bought, and every user can
 only see their own data.
 
+## Preview on GitHub Pages
+
+The workflow `.github/workflows/pages.yml` publishes a static copy of the app
+to `https://<owner>.github.io/t-rack-cg/` on every push to `main` (or by hand
+from the Actions tab). It is only for seeing how the app looks: it always runs
+in local mode, with no sign-in, no Supabase or AWS keys, data saved in the
+visitor's browser, and price lookups turned off.
+
+To turn it on once: **Settings > Pages > Build and deployment > Source:
+GitHub Actions**.
+
+To build it yourself, run `BASE_PATH=/t-rack-cg npm run build:pages` and
+serve the `out/` folder. The script sets the server-only parts (middleware,
+API routes, sign-out) aside during the build and puts them back afterwards.
+
 ## Scripts
 
-| Command             | What it does         |
-| ------------------- | -------------------- |
-| `npm run dev`       | Start the dev server |
-| `npm run build`     | Production build     |
-| `npm run lint`      | Lint                 |
-| `npm run typecheck` | Type check           |
-| `npm test`          | Unit tests           |
+| Command               | What it does                          |
+| --------------------- | ------------------------------------- |
+| `npm run dev`         | Start the dev server                  |
+| `npm run build`       | Production build                      |
+| `npm run build:pages` | Static preview build for GitHub Pages |
+| `npm run lint`        | Lint                                  |
+| `npm run typecheck`   | Type check                            |
+| `npm test`            | Unit tests                            |

@@ -1,6 +1,6 @@
 import { FolderList } from "@/components/FolderList";
 import { SignOutButton } from "@/components/SignOutButton";
-import { isLocalMode } from "@/lib/config";
+import { isLocalMode, isStaticPreview } from "@/lib/config";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function Home() {
@@ -22,12 +22,21 @@ export default async function Home() {
 
       {isLocalMode ? (
         <div className="rounded-2xl border border-warn-line bg-warn-soft px-4 py-3 text-sm text-warn">
-          <p className="font-medium">Local mode</p>
-          <p className="mt-1">
-            No database is connected, so there is no sign-in and your cards are
-            saved in this browser only. Add Supabase keys to{" "}
-            <code>.env.local</code> to sync across devices.
+          <p className="font-medium">
+            {isStaticPreview ? "Preview" : "Local mode"}
           </p>
+          {isStaticPreview ? (
+            <p className="mt-1">
+              This is a preview of the app. There is no sign-in, cards you add
+              are saved in this browser only, and price lookups are off.
+            </p>
+          ) : (
+            <p className="mt-1">
+              No database is connected, so there is no sign-in and your cards
+              are saved in this browser only. Add Supabase keys to{" "}
+              <code>.env.local</code> to sync across devices.
+            </p>
+          )}
         </div>
       ) : (
         <p className="text-sm text-muted">

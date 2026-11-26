@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { isStaticPreview } from "@/lib/config";
 import type { CardSummary, Condition } from "@/lib/data/types";
 import {
   CACHE_KEY,
@@ -52,6 +53,14 @@ export function SuggestedPrice({
     const cached = readJson<Cached>(CACHE_KEY)[key];
     if (cached)
       setState({ status: "ready", lookup: cached.lookup, at: cached.at });
+    // The GitHub Pages preview has no server to look prices up.
+    if (isStaticPreview) {
+      setState({
+        status: "error",
+        message: "Price lookups are off in this preview.",
+      });
+      return;
+    }
     const fresh = cached && Date.now() - cached.at < MAX_AGE_MS;
     if ((fresh && refresh === 0) || !navigator.onLine) {
       if (!cached)
