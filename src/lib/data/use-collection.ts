@@ -10,7 +10,12 @@ import { isLocalMode } from "@/lib/config";
 import { createClient } from "@/lib/supabase/client";
 import { LocalStore, LocalStoreError, STORAGE_KEY } from "./local-store";
 import { OUTBOX_KEY, Outbox } from "./outbox";
-import { clearAccountData, lastSyncedAt, supabaseBackend, syncNow } from "./sync";
+import {
+  clearAccountData,
+  lastSyncedAt,
+  supabaseBackend,
+  syncNow,
+} from "./sync";
 
 export type SyncStatus =
   | { state: "local" } // local mode: nothing to sync
@@ -67,7 +72,11 @@ async function runSync() {
       // drops refused changes. Keep them queued until the user signs in.
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
-        setStatus({ state: "error", pending: outbox.size, message: "Sign in to sync your changes" });
+        setStatus({
+          state: "error",
+          pending: outbox.size,
+          message: "Sign in to sync your changes",
+        });
         return;
       }
       const result = await syncNow({
@@ -77,9 +86,16 @@ async function runSync() {
         storage: window.localStorage,
         userId: data.session.user.id,
       });
-      if (result.status === "synced") setStatus({ state: "synced", at: result.at });
-      else if (result.status === "offline") setStatus({ state: "offline", pending: outbox.size });
-      else setStatus({ state: "error", pending: outbox.size, message: result.message });
+      if (result.status === "synced")
+        setStatus({ state: "synced", at: result.at });
+      else if (result.status === "offline")
+        setStatus({ state: "offline", pending: outbox.size });
+      else
+        setStatus({
+          state: "error",
+          pending: outbox.size,
+          message: result.message,
+        });
     } while (syncAgain);
   })().finally(() => {
     syncing = null;
@@ -138,7 +154,9 @@ function getClient(): Client {
   });
   if (outbox) {
     window.addEventListener("online", () => void runSync());
-    window.addEventListener("offline", () => setStatus({ state: "offline", pending: outbox.size }));
+    window.addEventListener("offline", () =>
+      setStatus({ state: "offline", pending: outbox.size }),
+    );
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") void runSync();
     });
@@ -170,16 +188,19 @@ export function useCollection() {
   const status: SyncStatus = store ? getClient().status : { state: "local" };
 
   /** Runs a change, refreshes the screen, and returns an error message if it failed. */
-  const run = useCallback(<T,>(fn: (s: LocalStore) => T): { value?: T; error?: string } => {
-    try {
-      const value = fn(getClient().store);
-      notify();
-      return { value };
-    } catch (e) {
-      if (e instanceof LocalStoreError) return { error: e.message };
-      throw e;
-    }
-  }, []);
+  const run = useCallback(
+    <T>(fn: (s: LocalStore) => T): { value?: T; error?: string } => {
+      try {
+        const value = fn(getClient().store);
+        notify();
+        return { value };
+      } catch (e) {
+        if (e instanceof LocalStoreError) return { error: e.message };
+        throw e;
+      }
+    },
+    [],
+  );
 
   return { store, version, status, run, syncNow: runSync };
 }

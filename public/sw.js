@@ -12,9 +12,7 @@ async function cachePage(cache, path) {
   await cache.put(path, res.clone());
   const html = await res.text();
   const assets = new Set(html.match(/\/_next\/static\/[^"'\s)\\]+/g) || []);
-  await Promise.all(
-    [...assets].map((url) => cache.add(url).catch(() => {})),
-  );
+  await Promise.all([...assets].map((url) => cache.add(url).catch(() => {})));
 }
 
 self.addEventListener("install", (event) => {
@@ -24,7 +22,9 @@ self.addEventListener("install", (event) => {
       .then((cache) =>
         Promise.all([
           ...PAGES.map((p) => cachePage(cache, p).catch(() => {})),
-          cache.addAll(["/manifest.webmanifest", "/icons/icon-192.png"]).catch(() => {}),
+          cache
+            .addAll(["/manifest.webmanifest", "/icons/icon-192.png"])
+            .catch(() => {}),
         ]),
       )
       .then(() => self.skipWaiting()),
@@ -35,7 +35,11 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) =>
+        Promise.all(
+          keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)),
+        ),
+      )
       .then(() => self.clients.claim()),
   );
 });
@@ -62,7 +66,10 @@ self.addEventListener("fetch", (event) => {
           return (
             (await cache.match(url.pathname)) ||
             (await cache.match("/")) ||
-            new Response("Offline", { status: 503, headers: { "Content-Type": "text/plain" } })
+            new Response("Offline", {
+              status: 503,
+              headers: { "Content-Type": "text/plain" },
+            })
           );
         }),
     );
@@ -88,7 +95,10 @@ self.addEventListener("fetch", (event) => {
   }
 
   // Icons and the manifest: saved copy first, refreshed in the background.
-  if (url.pathname.startsWith("/icons/") || url.pathname === "/manifest.webmanifest") {
+  if (
+    url.pathname.startsWith("/icons/") ||
+    url.pathname === "/manifest.webmanifest"
+  ) {
     event.respondWith(
       caches.match(req).then((hit) => {
         const update = fetch(req)

@@ -48,7 +48,12 @@ export interface Data {
 
 export class LocalStoreError extends Error {}
 
-const emptyData = (): Data => ({ folders: [], cards: [], purchases: [], sales: [] });
+const emptyData = (): Data => ({
+  folders: [],
+  cards: [],
+  purchases: [],
+  sales: [],
+});
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const norm = (s: string) => s.trim().toLowerCase();
@@ -115,7 +120,9 @@ export class LocalStore {
   // ---- folders ------------------------------------------------------------
 
   listFolders(): Folder[] {
-    return [...this.load().folders].sort((a, b) => a.name.localeCompare(b.name));
+    return [...this.load().folders].sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
   }
 
   createFolder(input: NewFolder): Folder {
@@ -136,7 +143,8 @@ export class LocalStore {
     const data = this.load();
     const folder = data.folders.find((f) => f.id === id);
     if (!folder) throw new LocalStoreError("Folder not found");
-    if (changes.name !== undefined) folder.name = requireText(changes.name, "Folder name");
+    if (changes.name !== undefined)
+      folder.name = requireText(changes.name, "Folder name");
     if (changes.description !== undefined) {
       folder.description = changes.description?.trim() || null;
     }
@@ -148,7 +156,9 @@ export class LocalStore {
 
   deleteFolder(id: string) {
     const data = this.load();
-    const cardIds = new Set(data.cards.filter((c) => c.folder_id === id).map((c) => c.id));
+    const cardIds = new Set(
+      data.cards.filter((c) => c.folder_id === id).map((c) => c.id),
+    );
     data.folders = data.folders.filter((f) => f.id !== id);
     data.cards = data.cards.filter((c) => !cardIds.has(c.id));
     data.purchases = data.purchases.filter((p) => !cardIds.has(p.card_id));
@@ -165,7 +175,8 @@ export class LocalStore {
   /** Number of card entries in each folder, by folder id. */
   countCardsByFolder(): Record<string, number> {
     const counts: Record<string, number> = {};
-    for (const c of this.load().cards) counts[c.folder_id] = (counts[c.folder_id] ?? 0) + 1;
+    for (const c of this.load().cards)
+      counts[c.folder_id] = (counts[c.folder_id] ?? 0) + 1;
     return counts;
   }
 
@@ -196,7 +207,10 @@ export class LocalStore {
         );
       }
     } else {
-      if (!card.grading_company || !GRADING_COMPANIES.includes(card.grading_company)) {
+      if (
+        !card.grading_company ||
+        !GRADING_COMPANIES.includes(card.grading_company)
+      ) {
         throw new LocalStoreError("Slabs need a grading company");
       }
       if (card.grade === null || !(card.grade >= 1 && card.grade <= 10)) {
@@ -212,7 +226,9 @@ export class LocalStore {
           c.cert_number === card.cert_number,
       );
       if (dupe) {
-        throw new LocalStoreError("This folder already has a slab with that cert number");
+        throw new LocalStoreError(
+          "This folder already has a slab with that cert number",
+        );
       }
     }
   }
@@ -236,7 +252,13 @@ export class LocalStore {
     };
     const card: Card =
       input.type === "raw"
-        ? { ...base, condition: input.condition, grading_company: null, grade: null, cert_number: null }
+        ? {
+            ...base,
+            condition: input.condition,
+            grading_company: null,
+            grade: null,
+            cert_number: null,
+          }
         : {
             ...base,
             condition: null,
@@ -269,7 +291,16 @@ export class LocalStore {
   updateCard(
     id: string,
     changes: Partial<
-      Pick<Card, "folder_id" | "name" | "card_number" | "condition" | "grading_company" | "grade" | "cert_number">
+      Pick<
+        Card,
+        | "folder_id"
+        | "name"
+        | "card_number"
+        | "condition"
+        | "grading_company"
+        | "grade"
+        | "cert_number"
+      >
     >,
   ): Card {
     const data = this.load();
@@ -316,12 +347,15 @@ export class LocalStore {
       .filter((s) => s.card_id === cardId)
       .reduce((n, s) => n + s.sell_quantity, 0);
     if (sold > bought) {
-      throw new LocalStoreError(`Cannot sell ${sold} copies; only ${bought} bought`);
+      throw new LocalStoreError(
+        `Cannot sell ${sold} copies; only ${bought} bought`,
+      );
     }
   }
 
   private validatePurchase(data: Data, p: NewPurchase) {
-    if (!data.cards.some((c) => c.id === p.card_id)) throw new LocalStoreError("Card not found");
+    if (!data.cards.some((c) => c.id === p.card_id))
+      throw new LocalStoreError("Card not found");
     requireDate(p.buy_date, "Buy date");
     requireNonNegative(p.buy_price, "Buy price");
     requireNonNegative(p.buy_percentage, "Buy percentage");
@@ -329,7 +363,8 @@ export class LocalStore {
   }
 
   private validateSale(data: Data, s: NewSale) {
-    if (!data.cards.some((c) => c.id === s.card_id)) throw new LocalStoreError("Card not found");
+    if (!data.cards.some((c) => c.id === s.card_id))
+      throw new LocalStoreError("Card not found");
     requireDate(s.sell_date, "Sell date");
     requireNonNegative(s.sell_price, "Sell price");
     requireNonNegative(s.sell_percentage, "Sell percentage");
@@ -352,11 +387,18 @@ export class LocalStore {
     return purchase;
   }
 
-  updatePurchase(id: string, changes: Partial<Omit<NewPurchase, "card_id">>): Purchase {
+  updatePurchase(
+    id: string,
+    changes: Partial<Omit<NewPurchase, "card_id">>,
+  ): Purchase {
     const data = this.load();
     const index = data.purchases.findIndex((p) => p.id === id);
     if (index < 0) throw new LocalStoreError("Purchase not found");
-    const updated = { ...data.purchases[index], ...changes, updated_at: this.now().toISOString() };
+    const updated = {
+      ...data.purchases[index],
+      ...changes,
+      updated_at: this.now().toISOString(),
+    };
     this.validatePurchase(data, updated);
     data.purchases[index] = updated;
     this.checkOwned(data, updated.card_id);
@@ -396,7 +438,11 @@ export class LocalStore {
     const data = this.load();
     const index = data.sales.findIndex((s) => s.id === id);
     if (index < 0) throw new LocalStoreError("Sale not found");
-    const updated = { ...data.sales[index], ...changes, updated_at: this.now().toISOString() };
+    const updated = {
+      ...data.sales[index],
+      ...changes,
+      updated_at: this.now().toISOString(),
+    };
     this.validateSale(data, updated);
     data.sales[index] = updated;
     this.checkOwned(data, updated.card_id);
@@ -435,7 +481,10 @@ export class LocalStore {
     data.cards = hasNew
       ? data.cards.filter((c) => c.id !== oldId)
       : data.cards.map((c) => (c.id === oldId ? { ...c, id: newId } : c));
-    data.purchases = data.purchases.map((p) => ({ ...p, card_id: swap(p.card_id) }));
+    data.purchases = data.purchases.map((p) => ({
+      ...p,
+      card_id: swap(p.card_id),
+    }));
     data.sales = data.sales.map((s) => ({ ...s, card_id: swap(s.card_id) }));
     this.save(data);
   }
@@ -464,7 +513,11 @@ export class LocalStore {
   }
 }
 
-export function summarize(card: Card, purchases: Purchase[], sales: Sale[]): CardSummary {
+export function summarize(
+  card: Card,
+  purchases: Purchase[],
+  sales: Sale[],
+): CardSummary {
   let copiesBought = 0;
   let totalCost = 0;
   for (const p of purchases) {
@@ -495,13 +548,17 @@ export function summarize(card: Card, purchases: Purchase[], sales: Sale[]): Car
     average_cost: round2(averageCost),
     total_received: round2(totalReceived),
     realized_profit: round2(totalReceived - averageCost * copiesSold),
-    asking_price: listing ? round2((listing.sell_price * listing.sell_percentage) / 100) : null,
+    asking_price: listing
+      ? round2((listing.sell_price * listing.sell_percentage) / 100)
+      : null,
   };
 }
 
 /** Newer by sell date, then by when it was entered. */
 function isNewer(a: Sale, b: Sale) {
-  return a.sell_date !== b.sell_date ? a.sell_date > b.sell_date : a.created_at > b.created_at;
+  return a.sell_date !== b.sell_date
+    ? a.sell_date > b.sell_date
+    : a.created_at > b.created_at;
 }
 
 /** The store for this browser. Only call it from client components. */

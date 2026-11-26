@@ -81,7 +81,13 @@ export function FolderView() {
     const before = store!.listCardSummaries(id).length;
     const { error, value } = run((s) =>
       type === "raw"
-        ? s.addCard({ type, folder_id: id, name, card_number: cardNumber, condition })
+        ? s.addCard({
+            type,
+            folder_id: id,
+            name,
+            card_number: cardNumber,
+            condition,
+          })
         : s.addCard({
             type,
             folder_id: id,
@@ -95,7 +101,9 @@ export function FolderView() {
     setError(error ?? null);
     if (error) return;
     const merged = store!.listCardSummaries(id).length === before;
-    setNotice(merged ? "This card was already in the folder in that condition." : null);
+    setNotice(
+      merged ? "This card was already in the folder in that condition." : null,
+    );
     // Open the card so its buy can be entered right away.
     if (value) setOpenCard(value.id);
     setName("");
@@ -112,7 +120,8 @@ export function FolderView() {
     router.push("/");
   }
 
-  const fieldLabel = "flex flex-col gap-1 text-[13px] font-medium text-ink-soft";
+  const fieldLabel =
+    "flex flex-col gap-1 text-[13px] font-medium text-ink-soft";
 
   return (
     <section className="flex flex-col gap-5 pb-20">
@@ -120,7 +129,9 @@ export function FolderView() {
         <Link href="/" className="text-[16px] text-accent">
           ‹ Folders
         </Link>
-        <h2 className="mt-1.5 text-[32px] font-bold leading-tight tracking-tight">{folder.name}</h2>
+        <h2 className="mt-1.5 text-[32px] font-bold leading-tight tracking-tight">
+          {folder.name}
+        </h2>
         <p className="text-sm text-muted">
           {folder.description ? `${folder.description} · ` : ""}
           {cards.length} {cards.length === 1 ? "card" : "cards"}
@@ -130,18 +141,27 @@ export function FolderView() {
       <SyncBadge status={status} onRetry={() => void syncNow()} />
 
       {cards.length > 0 && (
-        <dl className={`${cardClass} grid grid-cols-3 py-3.5`} aria-label="Folder totals">
+        <dl
+          className={`${cardClass} grid grid-cols-3 py-3.5`}
+          aria-label="Folder totals"
+        >
           <div>
             <dt className={labelClass}>Spent</dt>
-            <dd className="mt-0.5 text-[17px] font-semibold tabular-nums">{money(totals.cost)}</dd>
+            <dd className="mt-0.5 text-[17px] font-semibold tabular-nums">
+              {money(totals.cost)}
+            </dd>
           </div>
           <div className="border-l border-divider pl-3.5">
             <dt className={labelClass}>Received</dt>
-            <dd className="mt-0.5 text-[17px] font-semibold tabular-nums">{money(totals.received)}</dd>
+            <dd className="mt-0.5 text-[17px] font-semibold tabular-nums">
+              {money(totals.received)}
+            </dd>
           </div>
           <div className="border-l border-divider pl-3.5">
             <dt className={labelClass}>Profit</dt>
-            <dd className={`mt-0.5 text-[17px] font-semibold tabular-nums ${profitTone(totals.profit)}`}>
+            <dd
+              className={`mt-0.5 text-[17px] font-semibold tabular-nums ${profitTone(totals.profit)}`}
+            >
               {money(totals.profit)}
             </dd>
           </div>
@@ -151,17 +171,23 @@ export function FolderView() {
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-3 px-1">
           <h3 className={labelClass}>Cards ({cards.length})</h3>
-          {cards.length > 0 && <ExportButton store={store} folderId={folder.id} />}
+          {cards.length > 0 && (
+            <ExportButton store={store} folderId={folder.id} />
+          )}
         </div>
         {cards.length === 0 ? (
-          <p className={`${cardClass} text-muted`}>No cards in this folder yet. Add one below.</p>
+          <p className={`${cardClass} text-muted`}>
+            No cards in this folder yet. Add one below.
+          </p>
         ) : (
           <ul className="flex flex-col gap-3">
             {cards.map((c) => (
               <li key={c.id} className={cardClass}>
                 <div className="flex items-start justify-between gap-3">
                   <span className="min-w-0">
-                    <span className="block truncate text-[16px] font-semibold">{c.name}</span>
+                    <span className="block truncate text-[16px] font-semibold">
+                      {c.name}
+                    </span>
                     <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[13px] text-muted">
                       #{c.card_number}
                       {c.type === "raw" ? (
@@ -185,7 +211,9 @@ export function FolderView() {
                     Remove
                   </button>
                 </div>
-                {c.type === "raw" && <SuggestedPrice card={c} onPrice={onPrice} />}
+                {c.type === "raw" && (
+                  <SuggestedPrice card={c} onPrice={onPrice} />
+                )}
                 <CardTotals card={c} />
                 <button
                   type="button"
@@ -195,14 +223,26 @@ export function FolderView() {
                 >
                   {openCard === c.id ? "Hide buys and sells" : "Buys and sells"}
                 </button>
-                {openCard === c.id && <CardMoney store={store} card={c} run={run} suggestedPrice={prices[c.id]} />}
+                {openCard === c.id && (
+                  <CardMoney
+                    store={store}
+                    card={c}
+                    run={run}
+                    suggestedPrice={prices[c.id]}
+                  />
+                )}
               </li>
             ))}
           </ul>
         )}
       </div>
 
-      <form id="add-card" onSubmit={add} className={`${cardClass} flex scroll-mt-4 flex-col gap-2.5 py-4`} aria-label="Add card">
+      <form
+        id="add-card"
+        onSubmit={add}
+        className={`${cardClass} flex scroll-mt-4 flex-col gap-2.5 py-4`}
+        aria-label="Add card"
+      >
         <h3 className="text-[17px] font-semibold">Add a card</h3>
         <div className={segmentClass} role="radiogroup" aria-label="Card type">
           {(["raw", "slab"] as const).map((t) => (
@@ -218,12 +258,28 @@ export function FolderView() {
             </button>
           ))}
         </div>
-        <input aria-label="Card name" placeholder="Card name, like Charizard" value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
-        <input aria-label="Card number" placeholder="Card number, like 4/102" value={cardNumber} onChange={(e) => setCardNumber(e.target.value)} className={inputClass} />
+        <input
+          aria-label="Card name"
+          placeholder="Card name, like Charizard"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className={inputClass}
+        />
+        <input
+          aria-label="Card number"
+          placeholder="Card number, like 4/102"
+          value={cardNumber}
+          onChange={(e) => setCardNumber(e.target.value)}
+          className={inputClass}
+        />
         {type === "raw" ? (
           <label className={fieldLabel}>
             Condition
-            <select value={condition} onChange={(e) => setCondition(e.target.value as Condition)} className={inputClass}>
+            <select
+              value={condition}
+              onChange={(e) => setCondition(e.target.value as Condition)}
+              className={inputClass}
+            >
               {CONDITIONS.map((c) => (
                 <option key={c}>{c}</option>
               ))}
@@ -233,7 +289,11 @@ export function FolderView() {
           <div className="grid grid-cols-2 gap-2">
             <label className={fieldLabel}>
               Grading company
-              <select value={company} onChange={(e) => setCompany(e.target.value as GradingCompany)} className={inputClass}>
+              <select
+                value={company}
+                onChange={(e) => setCompany(e.target.value as GradingCompany)}
+                className={inputClass}
+              >
                 {GRADING_COMPANIES.map((c) => (
                   <option key={c}>{c}</option>
                 ))}
@@ -241,9 +301,23 @@ export function FolderView() {
             </label>
             <label className={fieldLabel}>
               Grade
-              <input type="number" min={1} max={10} step={0.5} value={grade} onChange={(e) => setGrade(e.target.value)} className={inputClass} />
+              <input
+                type="number"
+                min={1}
+                max={10}
+                step={0.5}
+                value={grade}
+                onChange={(e) => setGrade(e.target.value)}
+                className={inputClass}
+              />
             </label>
-            <input aria-label="Cert number" placeholder="Cert number" value={cert} onChange={(e) => setCert(e.target.value)} className={`${inputClass} col-span-2`} />
+            <input
+              aria-label="Cert number"
+              placeholder="Cert number"
+              value={cert}
+              onChange={(e) => setCert(e.target.value)}
+              className={`${inputClass} col-span-2`}
+            />
           </div>
         )}
         {error && <p className="text-sm text-neg">{error}</p>}
@@ -253,8 +327,14 @@ export function FolderView() {
         </button>
       </form>
 
-      <button type="button" onClick={removeFolder} className={`self-start px-1 text-sm ${dangerLinkClass}`}>
-        {confirmDelete ? "Tap again to delete this folder and its cards" : "Delete folder"}
+      <button
+        type="button"
+        onClick={removeFolder}
+        className={`self-start px-1 text-sm ${dangerLinkClass}`}
+      >
+        {confirmDelete
+          ? "Tap again to delete this folder and its cards"
+          : "Delete folder"}
       </button>
 
       <a

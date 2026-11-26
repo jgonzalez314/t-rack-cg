@@ -12,7 +12,10 @@ export type PricePick = { match?: string; printing?: string };
 
 export function readJson<T>(key: string): Record<string, T> {
   try {
-    return JSON.parse(window.localStorage.getItem(key) ?? "{}") as Record<string, T>;
+    return JSON.parse(window.localStorage.getItem(key) ?? "{}") as Record<
+      string,
+      T
+    >;
   } catch {
     return {};
   }
@@ -33,10 +36,13 @@ export const lookupKey = (c: Pick<Card, "name" | "card_number">) =>
 
 /** The match and printing to price: the user's pick, or the best match. */
 export function selection(lookup: PriceLookup, pick: PricePick) {
-  const match = lookup.matches.find((m) => m.id === pick.match) ?? lookup.matches[0];
+  const match =
+    lookup.matches.find((m) => m.id === pick.match) ?? lookup.matches[0];
   if (!match) return null;
   const printings = sortPrintings(match.prices);
-  const printing = printings.includes(pick.printing ?? "") ? pick.printing! : printings[0];
+  const printing = printings.includes(pick.printing ?? "")
+    ? pick.printing!
+    : printings[0];
   return { match, printings, printing };
 }
 
@@ -52,7 +58,9 @@ export interface SavedSuggestion {
  * The suggested price last shown for each raw card, from saved lookups only
  * (no network). Cards that were never priced on this device are left out.
  */
-export function savedSuggestions(cards: Card[]): Record<string, SavedSuggestion> {
+export function savedSuggestions(
+  cards: Card[],
+): Record<string, SavedSuggestion> {
   const cache = readJson<Cached>(CACHE_KEY);
   const picks = readJson<PricePick>(PICK_KEY);
   const out: Record<string, SavedSuggestion> = {};
@@ -63,7 +71,10 @@ export function savedSuggestions(cards: Card[]): Record<string, SavedSuggestion>
     const picked = selection(cached.lookup, picks[card.id] ?? {});
     if (!picked) continue;
     out[card.id] = {
-      price: suggestedPrice(picked.match.prices[picked.printing], (card.condition ?? "NM") as Condition),
+      price: suggestedPrice(
+        picked.match.prices[picked.printing],
+        (card.condition ?? "NM") as Condition,
+      ),
       date: picked.match.updatedAt,
       set: picked.match.set,
       printing: picked.printing,

@@ -50,17 +50,26 @@ export function SuggestedPrice({
   useEffect(() => {
     let cancelled = false;
     const cached = readJson<Cached>(CACHE_KEY)[key];
-    if (cached) setState({ status: "ready", lookup: cached.lookup, at: cached.at });
+    if (cached)
+      setState({ status: "ready", lookup: cached.lookup, at: cached.at });
     const fresh = cached && Date.now() - cached.at < MAX_AGE_MS;
     if ((fresh && refresh === 0) || !navigator.onLine) {
-      if (!cached) setState({ status: "error", message: "Go online to look up the TCGplayer price." });
+      if (!cached)
+        setState({
+          status: "error",
+          message: "Go online to look up the TCGplayer price.",
+        });
       return;
     }
     if (!cached) setState({ status: "loading" });
-    const params = new URLSearchParams({ name: card.name, number: card.card_number });
+    const params = new URLSearchParams({
+      name: card.name,
+      number: card.card_number,
+    });
     fetch(`/api/price?${params}`)
       .then(async (res) => {
-        const body = (await res.json().catch(() => null)) as (PriceLookup & { error?: string }) | null;
+        const body = (await res.json().catch(() => null)) as
+          (PriceLookup & { error?: string }) | null;
         if (!res.ok || !body || !Array.isArray(body.matches)) {
           throw new Error(body?.error ?? "Price lookup failed");
         }
@@ -74,7 +83,8 @@ export function SuggestedPrice({
       })
       .catch((e: Error) => {
         // Keep showing a saved price if there is one.
-        if (!cancelled && !cached) setState({ status: "error", message: e.message });
+        if (!cancelled && !cached)
+          setState({ status: "error", message: e.message });
       });
     return () => {
       cancelled = true;
@@ -82,8 +92,11 @@ export function SuggestedPrice({
   }, [key, card.name, card.card_number, refresh]);
 
   const condition = (card.condition ?? "NM") as Condition;
-  const picked = state.status === "ready" ? selection(state.lookup, pick) : null;
-  const suggested = picked ? suggestedPrice(picked.match.prices[picked.printing], condition) : null;
+  const picked =
+    state.status === "ready" ? selection(state.lookup, pick) : null;
+  const suggested = picked
+    ? suggestedPrice(picked.match.prices[picked.printing], condition)
+    : null;
   useEffect(() => {
     onPrice?.(card.id, suggested);
   }, [onPrice, card.id, suggested]);
@@ -102,7 +115,11 @@ export function SuggestedPrice({
     return (
       <p className={`${box} text-muted`}>
         {state.message}{" "}
-        <button type="button" onClick={() => setRefresh((n) => n + 1)} className="font-medium text-accent">
+        <button
+          type="button"
+          onClick={() => setRefresh((n) => n + 1)}
+          className="font-medium text-accent"
+        >
           Try again
         </button>
       </p>
@@ -113,7 +130,8 @@ export function SuggestedPrice({
   if (!picked) {
     return (
       <p className={`${box} text-muted`}>
-        No TCGplayer price found for this name and number. Check the spelling and the number (like 4/102).
+        No TCGplayer price found for this name and number. Check the spelling
+        and the number (like 4/102).
       </p>
     );
   }
@@ -129,7 +147,9 @@ export function SuggestedPrice({
     <div className={box} aria-label="Suggested price">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3">
         <span>
-          <span className="text-[11px] font-semibold tracking-wide text-muted uppercase">Suggested price ({condition})</span>{" "}
+          <span className="text-[11px] font-semibold tracking-wide text-muted uppercase">
+            Suggested price ({condition})
+          </span>{" "}
           <span className="text-xl font-bold tracking-tight tabular-nums">
             {suggested === null ? "No price yet" : money(suggested)}
           </span>
@@ -137,7 +157,8 @@ export function SuggestedPrice({
         {market !== null && (
           <span className="text-xs text-muted tabular-nums">
             TCGplayer market {money(market)}
-            {condition !== "NM" && ` × ${Math.round(CONDITION_FACTOR[condition] * 100)}% for ${condition} (estimate)`}
+            {condition !== "NM" &&
+              ` × ${Math.round(CONDITION_FACTOR[condition] * 100)}% for ${condition} (estimate)`}
           </span>
         )}
       </div>
@@ -165,7 +186,9 @@ export function SuggestedPrice({
           <select
             aria-label="Printing"
             value={printing}
-            onChange={(e) => choose({ match: match.id, printing: e.target.value })}
+            onChange={(e) =>
+              choose({ match: match.id, printing: e.target.value })
+            }
             className={selectClass}
           >
             {printings.map((p) => (
@@ -179,11 +202,20 @@ export function SuggestedPrice({
         )}
         {match.updatedAt && <span>TCGplayer price from {match.updatedAt}</span>}
         {link && (
-          <a href={link} target="_blank" rel="noreferrer" className="font-medium text-accent">
+          <a
+            href={link}
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium text-accent"
+          >
             TCGplayer
           </a>
         )}
-        <button type="button" onClick={() => setRefresh((n) => n + 1)} className="font-medium text-accent">
+        <button
+          type="button"
+          onClick={() => setRefresh((n) => n + 1)}
+          className="font-medium text-accent"
+        >
           Refresh
         </button>
       </div>
