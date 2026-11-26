@@ -17,6 +17,7 @@ import { ExportButton } from "./ExportButton";
 import { SuggestedPrice } from "./SuggestedPrice";
 import { SyncBadge } from "./SyncBadge";
 import {
+  backButtonClass,
   buttonClass,
   cardClass,
   chipClass,
@@ -61,8 +62,8 @@ export function FolderView() {
     return (
       <div className="mt-6 flex flex-col gap-3">
         <p>This folder doesn&apos;t exist anymore.</p>
-        <Link href="/" className={linkClass}>
-          Back to folders
+        <Link href="/" className={backButtonClass}>
+          <span aria-hidden="true">‹</span> Back to folders
         </Link>
       </div>
     );
@@ -127,11 +128,11 @@ export function FolderView() {
 
   return (
     <section className="flex flex-col gap-5 pb-20">
-      <div>
-        <Link href="/" className="text-[16px] text-accent">
-          ‹ Folders
+      <div className="flex flex-col">
+        <Link href="/" className={backButtonClass}>
+          <span aria-hidden="true">‹</span> Back to folders
         </Link>
-        <h2 className="mt-1.5 text-[32px] font-bold leading-tight tracking-tight">
+        <h2 className="mt-3 text-[32px] font-bold leading-tight tracking-tight">
           {folder.name}
         </h2>
         <p className="text-sm text-muted">
