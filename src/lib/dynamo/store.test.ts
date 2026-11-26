@@ -113,6 +113,20 @@ describe("cards", () => {
     ).toHaveLength(2);
   });
 
+  it("frees a raw card's key when it becomes a slab", async () => {
+    const { f, c } = await binderWithCard();
+    const asSlab = { ...slab(f.id, "888"), id: c.id };
+    expect(await db.upsert("cards", asSlab)).toEqual(ok);
+    expect(await db.upsert("cards", raw(f.id))).toEqual(ok);
+    expect(code(await db.upsert("cards", slab(f.id, "888")))).toBe("23505");
+    const data = await db.fetchAll();
+    expect(data.cards.find((x) => x.id === c.id)).toMatchObject({
+      type: "slab",
+      condition: null,
+      cert_number: "888",
+    });
+  });
+
   it("keeps slab certs unique in a folder", async () => {
     const f = folder();
     await db.upsert("folders", f);

@@ -39,6 +39,112 @@ const raw = (condition: "NM" | "LP" | "MP" = "LP") =>
     condition,
   }) as const;
 
+describe("editing a card entry", () => {
+  it("edits every field and keeps its buys and sells", () => {
+    const other = store.createFolder({ name: "Trade binder" });
+    const card = store.addCard(raw("LP"));
+    store.addPurchase({
+      card_id: card.id,
+      buy_date: "2026-01-01",
+      buy_price: 100,
+      buy_percentage: 80,
+      quantity: 2,
+    });
+    const edited = store.updateCard(card.id, {
+      name: " Charizard Holo ",
+      card_number: "4/102a",
+      condition: "NM",
+      folder_id: other.id,
+    });
+    expect(edited).toMatchObject({
+      id: card.id,
+      name: "Charizard Holo",
+      card_number: "4/102a",
+      condition: "NM",
+      folder_id: other.id,
+    });
+    expect(store.listCardSummaries(folderId)).toHaveLength(0);
+    expect(store.listCardSummaries(other.id)[0].quantity_owned).toBe(2);
+  });
+
+  it("turns a raw card into a slab and back", () => {
+    const card = store.addCard(raw("LP"));
+    const slab = store.updateCard(card.id, {
+      type: "slab",
+      grading_company: "PSA",
+      grade: 9,
+      cert_number: " 555 ",
+    });
+    expect(slab).toMatchObject({
+      type: "slab",
+      condition: null,
+      grading_company: "PSA",
+      grade: 9,
+      cert_number: "555",
+    });
+    expect(() => store.updateCard(card.id, { grade: 11 })).toThrow(/Grade/);
+    const back = store.updateCard(card.id, { type: "raw", condition: "MP" });
+    expect(back).toMatchObject({
+      type: "raw",
+      condition: "MP",
+      grading_company: null,
+      grade: null,
+      cert_number: null,
+    });
+  });
+
+  it("refuses an edit that copies another entry in the folder", () => {
+    store.addCard(raw("NM"));
+    const lp = store.addCard(raw("LP"));
+    expect(() => store.updateCard(lp.id, { condition: "NM" })).toThrow(
+      /already has this card/,
+    );
+    expect(() => store.updateCard(lp.id, { name: " " })).toThrow(/required/);
+    expect(store.listCardSummaries(folderId).map((c) => c.condition)).toEqual(
+      expect.arrayContaining(["NM", "LP"]),
+    );
+  });
+
+  it("edits a buy and a sell", () => {
+    const card = store.addCard(raw());
+    const buy = store.addPurchase({
+      card_id: card.id,
+      buy_date: "2026-01-01",
+      buy_price: 100,
+      buy_percentage: 80,
+      quantity: 2,
+    });
+    const sale = store.addSale({
+      card_id: card.id,
+      sell_date: "2026-02-01",
+      sell_price: 150,
+      sell_percentage: 90,
+      sell_quantity: 1,
+    });
+    store.updatePurchase(buy.id, {
+      buy_date: "2026-01-05",
+      buy_price: 120,
+      buy_percentage: 75,
+      quantity: 3,
+    });
+    store.updateSale(sale.id, {
+      sell_date: "2026-02-02",
+      sell_price: 200,
+      sell_percentage: 100,
+      sell_quantity: 2,
+    });
+    expect(store.listCardSummaries(folderId)[0]).toMatchObject({
+      copies_bought: 3,
+      copies_sold: 2,
+      total_cost: 270,
+      total_received: 400,
+    });
+    expect(() => store.updateSale(sale.id, { sell_quantity: 4 })).toThrow(
+      /Cannot sell/,
+    );
+  });
+});
+
 describe("cards", () => {
   it("combines the same raw card and condition in a folder", () => {
     const a = store.addCard(raw("LP"));

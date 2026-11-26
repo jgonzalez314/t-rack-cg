@@ -48,6 +48,21 @@ export interface Data {
 
 export class LocalStoreError extends Error {}
 
+/** The fields of a card entry that can be edited. */
+export type CardChanges = Partial<
+  Pick<
+    Card,
+    | "folder_id"
+    | "type"
+    | "name"
+    | "card_number"
+    | "condition"
+    | "grading_company"
+    | "grade"
+    | "cert_number"
+  >
+>;
+
 const emptyData = (): Data => ({
   folders: [],
   cards: [],
@@ -288,21 +303,12 @@ export class LocalStore {
     return card;
   }
 
-  updateCard(
-    id: string,
-    changes: Partial<
-      Pick<
-        Card,
-        | "folder_id"
-        | "name"
-        | "card_number"
-        | "condition"
-        | "grading_company"
-        | "grade"
-        | "cert_number"
-      >
-    >,
-  ): Card {
+  /**
+   * Changes any field of a card entry, including raw/slab and its folder.
+   * Its buys and sells stay with it. The same rules as adding apply, so an
+   * edit that would make it a copy of another entry in the folder is refused.
+   */
+  updateCard(id: string, changes: CardChanges): Card {
     const data = this.load();
     const index = data.cards.findIndex((c) => c.id === id);
     if (index < 0) throw new LocalStoreError("Card not found");
