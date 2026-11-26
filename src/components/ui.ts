@@ -9,15 +9,20 @@ export const secondaryButtonClass =
 /** A white rounded tile on the grey page, like an iOS grouped list. */
 export const cardClass = "rounded-2xl bg-surface px-4 py-3 shadow-tile";
 /** Small uppercase label above a number. */
-export const labelClass = "text-[11px] font-semibold uppercase tracking-wide text-muted";
+export const labelClass =
+  "text-[11px] font-semibold uppercase tracking-wide text-muted";
 /** Grey pill for a condition, like NM. */
-export const chipClass = "rounded-md bg-sunken px-1.5 py-px text-[11px] font-semibold text-ink-soft";
+export const chipClass =
+  "rounded-md bg-sunken px-1.5 py-px text-[11px] font-semibold text-ink-soft";
 /** Blue pill for a grade, like PSA 10. */
-export const gradeChipClass = "rounded-md bg-accent-soft px-1.5 py-px text-[11px] font-semibold text-accent";
+export const gradeChipClass =
+  "rounded-md bg-accent-soft px-1.5 py-px text-[11px] font-semibold text-accent";
 export const linkClass = "font-medium text-accent";
 export const dangerLinkClass = "font-medium text-neg";
 /** Segmented control (Raw / Slab). */
-export const segmentClass = "flex rounded-[10px] bg-sunken p-0.5 text-sm font-medium";
+export const segmentClass =
+  "flex rounded-[10px] bg-sunken p-0.5 text-sm font-medium";
 export const segmentItemClass = (on: boolean) =>
   `flex-1 rounded-lg px-3 py-1.5 text-center ${on ? "bg-surface text-ink shadow-sm" : "text-ink-soft"}`;
-export const profitTone = (n: number) => (n > 0 ? "text-pos" : n < 0 ? "text-neg" : "");
+export const profitTone = (n: number) =>
+  n > 0 ? "text-pos" : n < 0 ? "text-neg" : "";

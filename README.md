@@ -168,13 +168,13 @@ writer lives in `src/lib/export` and needs no extra packages.
 
 ## Data model
 
-| Table | What it holds |
-| --- | --- |
-| `folders` | Folders you create |
-| `cards` | One entry per card in a folder. Raw cards with the same name, number and condition share one entry. Slabs store grading company, grade and cert number. |
-| `purchases` | Each buy: date, market price per card, percent of market paid, quantity |
-| `sales` | Each sale: date, market price per card, percent of market received, quantity. A quantity of 0 is a listing: up for sale at that price, not sold yet. |
-| `card_summary` (view) | Quantity owned, total cost, average cost, total received, profit and asking price per card |
+| Table                 | What it holds                                                                                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `folders`             | Folders you create                                                                                                                                      |
+| `cards`               | One entry per card in a folder. Raw cards with the same name, number and condition share one entry. Slabs store grading company, grade and cert number. |
+| `purchases`           | Each buy: date, market price per card, percent of market paid, quantity                                                                                 |
+| `sales`               | Each sale: date, market price per card, percent of market received, quantity. A quantity of 0 is a listing: up for sale at that price, not sold yet.    |
+| `card_summary` (view) | Quantity owned, total cost, average cost, total received, profit and asking price per card                                                              |
 
 Profit uses average cost: `(sell price × sell % − average cost) × copies sold`.
 Listings (sold quantity 0) are left out of profit. The newest listing's
@@ -184,10 +184,10 @@ only see their own data.
 
 ## Scripts
 
-| Command | What it does |
-| --- | --- |
-| `npm run dev` | Start the dev server |
-| `npm run build` | Production build |
-| `npm run lint` | Lint |
-| `npm run typecheck` | Type check |
-| `npm test` | Unit tests |
+| Command             | What it does         |
+| ------------------- | -------------------- |
+| `npm run dev`       | Start the dev server |
+| `npm run build`     | Production build     |
+| `npm run lint`      | Lint                 |
+| `npm run typecheck` | Type check           |
+| `npm test`          | Unit tests           |

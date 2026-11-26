@@ -16,8 +16,16 @@ beforeEach(() => {
   db = new DynamoStore(table, () => new Date(NOW));
 });
 
-const stamps = { created_at: "2026-11-20T00:00:00.000Z", updated_at: "2026-11-20T00:00:00.000Z" };
-const folder = (id = randomUUID()) => ({ id, name: "Binder", description: null, ...stamps });
+const stamps = {
+  created_at: "2026-11-20T00:00:00.000Z",
+  updated_at: "2026-11-20T00:00:00.000Z",
+};
+const folder = (id = randomUUID()) => ({
+  id,
+  name: "Binder",
+  description: null,
+  ...stamps,
+});
 const raw = (folder_id: string, extra: Partial<Card> = {}) => ({
   id: randomUUID(),
   folder_id,
@@ -88,7 +96,9 @@ describe("cards", () => {
 
   it("allows the same card in another condition or another folder", async () => {
     const { f } = await binderWithCard();
-    expect(await db.upsert("cards", raw(f.id, { condition: "LP" }))).toEqual(ok);
+    expect(await db.upsert("cards", raw(f.id, { condition: "LP" }))).toEqual(
+      ok,
+    );
     const other = folder();
     await db.upsert("folders", other);
     expect(await db.upsert("cards", raw(other.id))).toEqual(ok);
@@ -98,7 +108,9 @@ describe("cards", () => {
     const { f, c } = await binderWithCard();
     expect(await db.upsert("cards", { ...c, condition: "LP" })).toEqual(ok);
     expect(await db.upsert("cards", raw(f.id))).toEqual(ok);
-    expect([...table.items.keys()].filter((k) => k.startsWith("UNIQ#"))).toHaveLength(2);
+    expect(
+      [...table.items.keys()].filter((k) => k.startsWith("UNIQ#")),
+    ).toHaveLength(2);
   });
 
   it("keeps slab certs unique in a folder", async () => {
@@ -116,26 +128,48 @@ describe("cards", () => {
   it("checks the same rules as the database", async () => {
     const f = folder();
     await db.upsert("folders", f);
-    expect(code(await db.upsert("cards", raw(f.id, { name: "  " })))).toBe("23514");
-    expect(code(await db.upsert("cards", raw(f.id, { condition: null })))).toBe("23514");
-    expect(code(await db.upsert("cards", raw(f.id, { cert_number: "1" })))).toBe("23514");
-    expect(code(await db.upsert("cards", { ...slab(f.id), grade: 11 }))).toBe("23514");
-    expect(code(await db.upsert("cards", { ...slab(f.id), cert_number: null }))).toBe("23514");
-    expect(code(await db.upsert("folders", { ...folder(), name: "" }))).toBe("23514");
-    expect(code(await db.upsert("folders", { ...folder(), id: "not-a-uuid" }))).toBe("23514");
+    expect(code(await db.upsert("cards", raw(f.id, { name: "  " })))).toBe(
+      "23514",
+    );
+    expect(code(await db.upsert("cards", raw(f.id, { condition: null })))).toBe(
+      "23514",
+    );
+    expect(
+      code(await db.upsert("cards", raw(f.id, { cert_number: "1" }))),
+    ).toBe("23514");
+    expect(code(await db.upsert("cards", { ...slab(f.id), grade: 11 }))).toBe(
+      "23514",
+    );
+    expect(
+      code(await db.upsert("cards", { ...slab(f.id), cert_number: null })),
+    ).toBe("23514");
+    expect(code(await db.upsert("folders", { ...folder(), name: "" }))).toBe(
+      "23514",
+    );
+    expect(
+      code(await db.upsert("folders", { ...folder(), id: "not-a-uuid" })),
+    ).toBe("23514");
   });
 
   it("only stores known columns", async () => {
     const f = { ...folder(), user_id: "someone-else", extra: "x" };
     await db.upsert("folders", f);
     const [saved] = (await db.fetchAll()).folders;
-    expect(Object.keys(saved).sort()).toEqual(["created_at", "description", "id", "name", "updated_at"]);
+    expect(Object.keys(saved).sort()).toEqual([
+      "created_at",
+      "description",
+      "id",
+      "name",
+      "updated_at",
+    ]);
   });
 });
 
 describe("purchases and sales", () => {
   it("needs the card to exist", async () => {
-    expect(code(await db.upsert("purchases", buy(randomUUID(), 1)))).toBe("23503");
+    expect(code(await db.upsert("purchases", buy(randomUUID(), 1)))).toBe(
+      "23503",
+    );
     expect(code(await db.upsert("sales", sell(randomUUID(), 1)))).toBe("23503");
   });
 
@@ -147,7 +181,9 @@ describe("purchases and sales", () => {
     expect(await db.upsert("sales", s)).toEqual(ok);
     expect(code(await db.upsert("sales", sell(c.id, 1)))).toBe("23514");
     // Lowering or deleting the purchase would leave more sold than bought.
-    expect(code(await db.upsert("purchases", { ...b, quantity: 1 }))).toBe("23514");
+    expect(code(await db.upsert("purchases", { ...b, quantity: 1 }))).toBe(
+      "23514",
+    );
     expect(code(await db.remove("purchases", b.id))).toBe("23514");
     // Deleting the sale first makes room.
     expect(await db.remove("sales", s.id)).toEqual(ok);
@@ -168,18 +204,31 @@ describe("purchases and sales", () => {
     await db.upsert("purchases", b);
     await db.upsert("sales", sell(c.id, 1));
     // Moving it would leave the first card with 1 sold and 0 bought.
-    expect(code(await db.upsert("purchases", { ...b, card_id: other.id }))).toBe("23514");
+    expect(
+      code(await db.upsert("purchases", { ...b, card_id: other.id })),
+    ).toBe("23514");
     await db.upsert("purchases", buy(c.id, 1));
-    expect(await db.upsert("purchases", { ...b, card_id: other.id })).toEqual(ok);
-    expect(table.items.get(`CARD#${c.id}`)).toMatchObject({ bought: 1, sold: 1 });
-    expect(table.items.get(`CARD#${other.id}`)).toMatchObject({ bought: 3, sold: 0 });
+    expect(await db.upsert("purchases", { ...b, card_id: other.id })).toEqual(
+      ok,
+    );
+    expect(table.items.get(`CARD#${c.id}`)).toMatchObject({
+      bought: 1,
+      sold: 1,
+    });
+    expect(table.items.get(`CARD#${other.id}`)).toMatchObject({
+      bought: 3,
+      sold: 0,
+    });
   });
 
   it("keeps a card's totals when the card itself is edited", async () => {
     const { c } = await binderWithCard();
     await db.upsert("purchases", buy(c.id, 2));
     await db.upsert("cards", { ...c, name: "Charizard Holo" });
-    expect(table.items.get(`CARD#${c.id}`)).toMatchObject({ bought: 2, name: "Charizard Holo" });
+    expect(table.items.get(`CARD#${c.id}`)).toMatchObject({
+      bought: 2,
+      name: "Charizard Holo",
+    });
   });
 
   it("saving the same change twice does not count it twice", async () => {
@@ -227,21 +276,34 @@ describe("deletes", () => {
 describe("with sync", () => {
   function memoryStorage(): KeyValueStorage {
     const map = new Map<string, string>();
-    return { getItem: (k) => map.get(k) ?? null, setItem: (k, v) => void map.set(k, v) };
+    return {
+      getItem: (k) => map.get(k) ?? null,
+      setItem: (k, v) => void map.set(k, v),
+    };
   }
   const backend: () => SyncBackend = () => ({
-    upsert: async (t, row) => toResult(asError(await db.upsert(t, row as never))),
+    upsert: async (t, row) =>
+      toResult(asError(await db.upsert(t, row as never))),
     remove: async (t, id) => toResult(asError(await db.remove(t, id))),
     findMatchingCard: (card) => db.findMatchingCard(card),
     fetchAll: () => db.fetchAll(),
   });
-  const asError = (r: StoreResult) => (r.ok ? null : { code: r.code, message: r.message });
+  const asError = (r: StoreResult) =>
+    r.ok ? null : { code: r.code, message: r.message };
 
   function device() {
     const storage = memoryStorage();
     const outbox = new Outbox(storage);
-    const store = new LocalStore(storage, undefined, () => randomUUID(), (change) => outbox.add(change));
-    return { store, sync: () => syncNow({ store, outbox, backend: backend(), storage }) };
+    const store = new LocalStore(
+      storage,
+      undefined,
+      () => randomUUID(),
+      (change) => outbox.add(change),
+    );
+    return {
+      store,
+      sync: () => syncNow({ store, outbox, backend: backend(), storage }),
+    };
   }
 
   it("merges a raw card two devices added to the same folder, adding up their buys", async () => {
@@ -251,11 +313,29 @@ describe("with sync", () => {
     await phone.sync();
     await laptop.sync();
 
-    const card = { type: "raw", folder_id: f.id, name: "Pikachu", card_number: "58/102", condition: "NM" } as const;
+    const card = {
+      type: "raw",
+      folder_id: f.id,
+      name: "Pikachu",
+      card_number: "58/102",
+      condition: "NM",
+    } as const;
     const a = phone.store.addCard(card);
-    phone.store.addPurchase({ card_id: a.id, buy_date: "2026-11-01", buy_price: 10, buy_percentage: 100, quantity: 1 });
+    phone.store.addPurchase({
+      card_id: a.id,
+      buy_date: "2026-11-01",
+      buy_price: 10,
+      buy_percentage: 100,
+      quantity: 1,
+    });
     const b = laptop.store.addCard(card);
-    laptop.store.addPurchase({ card_id: b.id, buy_date: "2026-11-02", buy_price: 12, buy_percentage: 100, quantity: 2 });
+    laptop.store.addPurchase({
+      card_id: b.id,
+      buy_date: "2026-11-02",
+      buy_price: 12,
+      buy_percentage: 100,
+      quantity: 2,
+    });
 
     expect((await phone.sync()).status).toBe("synced");
     expect((await laptop.sync()).status).toBe("synced");

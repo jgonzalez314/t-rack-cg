@@ -33,9 +33,15 @@ import {
 } from "@/lib/data/types";
 import { ConditionFailed, type Item, type ItemTable, type Op } from "./table";
 
-export type StoreResult = { ok: true } | { ok: false; code: string; message: string };
+export type StoreResult =
+  { ok: true } | { ok: false; code: string; message: string };
 
-export const TABLES: readonly Table[] = ["folders", "cards", "purchases", "sales"];
+export const TABLES: readonly Table[] = [
+  "folders",
+  "cards",
+  "purchases",
+  "sales",
+];
 
 const PREFIX: Record<Table, string> = {
   folders: "FOLDER#",
@@ -62,8 +68,26 @@ const FIELDS = {
     "created_at",
     "updated_at",
   ],
-  purchases: ["id", "card_id", "buy_date", "buy_price", "buy_percentage", "quantity", "created_at", "updated_at"],
-  sales: ["id", "card_id", "sell_date", "sell_price", "sell_percentage", "sell_quantity", "created_at", "updated_at"],
+  purchases: [
+    "id",
+    "card_id",
+    "buy_date",
+    "buy_price",
+    "buy_percentage",
+    "quantity",
+    "created_at",
+    "updated_at",
+  ],
+  sales: [
+    "id",
+    "card_id",
+    "sell_date",
+    "sell_price",
+    "sell_percentage",
+    "sell_quantity",
+    "created_at",
+    "updated_at",
+  ],
 } as const satisfies Record<Table, readonly string[]>;
 
 class Refused extends Error {
@@ -94,7 +118,8 @@ function optionalText(v: unknown, what: string, max = 2000): string | null {
   return v;
 }
 function id(v: unknown, what: string): string {
-  if (typeof v !== "string" || !UUID.test(v)) throw broken(`${what} is not a valid id`);
+  if (typeof v !== "string" || !UUID.test(v))
+    throw broken(`${what} is not a valid id`);
   return v;
 }
 function stamp(v: unknown, fallback: string): string {
@@ -108,12 +133,14 @@ function date(v: unknown, what: string): string {
 }
 function money(v: unknown, what: string): number {
   const n = Number(v);
-  if (!Number.isFinite(n) || n < 0 || n >= 1e10) throw broken(`${what} must be 0 or more`);
+  if (!Number.isFinite(n) || n < 0 || n >= 1e10)
+    throw broken(`${what} must be 0 or more`);
   return Math.round(n * 100) / 100;
 }
 function count(v: unknown, what: string, min: number): number {
   const n = Number(v);
-  if (!Number.isInteger(n) || n < min || n > 1e9) throw broken(`${what} must be a whole number of at least ${min}`);
+  if (!Number.isInteger(n) || n < min || n > 1e9)
+    throw broken(`${what} must be a whole number of at least ${min}`);
   return n;
 }
 
@@ -139,14 +166,25 @@ function cleanCard(row: Record<string, unknown>, now: string): Card {
     folder_id: id(row.folder_id, "Folder"),
     name: text(row.name, "Card name", 200),
     card_number: text(row.card_number, "Card number", 50),
-    game: typeof row.game === "string" && row.game ? row.game.slice(0, 50) : "Pokemon",
-    language: typeof row.language === "string" && row.language ? row.language.slice(0, 50) : "English",
+    game:
+      typeof row.game === "string" && row.game
+        ? row.game.slice(0, 50)
+        : "Pokemon",
+    language:
+      typeof row.language === "string" && row.language
+        ? row.language.slice(0, 50)
+        : "English",
     created_at: stamp(row.created_at, now),
     updated_at: now,
   };
   if (row.type === "raw") {
-    if (!CONDITIONS.includes(row.condition as never)) throw broken("A raw card needs a condition");
-    if (row.grading_company != null || row.grade != null || row.cert_number != null) {
+    if (!CONDITIONS.includes(row.condition as never))
+      throw broken("A raw card needs a condition");
+    if (
+      row.grading_company != null ||
+      row.grade != null ||
+      row.cert_number != null
+    ) {
       throw broken("A raw card has no grade or cert number");
     }
     return {
@@ -164,7 +202,12 @@ function cleanCard(row: Record<string, unknown>, now: string): Card {
       throw broken("A slab needs a grading company");
     }
     const grade = Number(row.grade);
-    if (!Number.isFinite(grade) || grade < 1 || grade > 10 || Math.round(grade * 10) !== grade * 10) {
+    if (
+      !Number.isFinite(grade) ||
+      grade < 1 ||
+      grade > 10 ||
+      Math.round(grade * 10) !== grade * 10
+    ) {
       throw broken("Grade must be from 1 to 10");
     }
     return {
@@ -209,18 +252,42 @@ function cleanSale(row: Record<string, unknown>, now: string): Sale {
  * The key that makes two cards "the same card in the same folder". Matches
  * the cards_raw_unique_in_folder and cards_slab_unique_in_folder indexes.
  */
-export function uniqueKey(card: Pick<Card, "folder_id" | "type" | "name" | "card_number" | "game" | "language" | "condition" | "grading_company" | "cert_number">) {
+export function uniqueKey(
+  card: Pick<
+    Card,
+    | "folder_id"
+    | "type"
+    | "name"
+    | "card_number"
+    | "game"
+    | "language"
+    | "condition"
+    | "grading_company"
+    | "cert_number"
+  >,
+) {
   const parts =
     card.type === "raw"
-      ? ["RAW", card.folder_id, card.name.toLowerCase(), card.card_number.toLowerCase(), card.game, card.language, card.condition]
+      ? [
+          "RAW",
+          card.folder_id,
+          card.name.toLowerCase(),
+          card.card_number.toLowerCase(),
+          card.game,
+          card.language,
+          card.condition,
+        ]
       : ["SLAB", card.folder_id, card.grading_company, card.cert_number];
   return "UNIQ#" + parts.map((p) => encodeURIComponent(String(p))).join("#");
 }
 
-const rev = (item: Item | undefined) => (typeof item?.rev === "number" ? item.rev : 0);
+const rev = (item: Item | undefined) =>
+  typeof item?.rev === "number" ? item.rev : 0;
 /** The item is unchanged since it was read (or still missing). */
 const unchanged = (item: Item | undefined) =>
-  item ? ({ kind: "equals", attrs: { rev: rev(item) } } as const) : ({ kind: "absent" } as const);
+  item
+    ? ({ kind: "equals", attrs: { rev: rev(item) } } as const)
+    : ({ kind: "absent" } as const);
 
 const ATTEMPTS = 4;
 
@@ -236,10 +303,15 @@ export class DynamoStore {
         await fn();
         return { ok: true };
       } catch (e) {
-        if (e instanceof Refused) return { ok: false, code: e.code, message: e.message };
+        if (e instanceof Refused)
+          return { ok: false, code: e.code, message: e.message };
         if (e instanceof Raced) {
           if (attempt < ATTEMPTS) continue;
-          return { ok: false, code: "40001", message: "Changed on another device at the same time, try again" };
+          return {
+            ok: false,
+            code: "40001",
+            message: "Changed on another device at the same time, try again",
+          };
         }
         throw e;
       }
@@ -247,19 +319,26 @@ export class DynamoStore {
   }
 
   upsert(table: Table, row: Record<string, unknown>): Promise<StoreResult> {
-    if (!row || typeof row !== "object") return Promise.resolve({ ok: false, code: "23514", message: "Nothing to save" });
+    if (!row || typeof row !== "object")
+      return Promise.resolve({
+        ok: false,
+        code: "23514",
+        message: "Nothing to save",
+      });
     return this.run(async () => {
       const now = this.now().toISOString();
       if (table === "folders") return this.putFolder(cleanFolder(row, now));
       if (table === "cards") return this.putCard(cleanCard(row, now));
-      if (table === "purchases") return this.putMove("purchases", cleanPurchase(row, now));
+      if (table === "purchases")
+        return this.putMove("purchases", cleanPurchase(row, now));
       return this.putMove("sales", cleanSale(row, now));
     });
   }
 
   remove(table: Table, rowId: string): Promise<StoreResult> {
     return this.run(async () => {
-      if (typeof rowId !== "string" || !rowId) throw broken("Nothing to delete");
+      if (typeof rowId !== "string" || !rowId)
+        throw broken("Nothing to delete");
       if (table === "folders") return this.removeFolder(rowId);
       if (table === "cards") return this.removeCards([rowId]);
       return this.removeMove(table, rowId);
@@ -269,7 +348,12 @@ export class DynamoStore {
   async findMatchingCard(card: Card): Promise<string | null> {
     let key: string;
     try {
-      key = uniqueKey(cleanCard(card as unknown as Record<string, unknown>, this.now().toISOString()));
+      key = uniqueKey(
+        cleanCard(
+          card as unknown as Record<string, unknown>,
+          this.now().toISOString(),
+        ),
+      );
     } catch {
       return null;
     }
@@ -281,7 +365,8 @@ export class DynamoStore {
     const data: Data = { folders: [], cards: [], purchases: [], sales: [] };
     for (const item of await this.table.all()) {
       for (const t of TABLES) {
-        if (item.sk.startsWith(PREFIX[t])) (data[t] as unknown[]).push(pick(t, item));
+        if (item.sk.startsWith(PREFIX[t]))
+          (data[t] as unknown[]).push(pick(t, item));
       }
     }
     // A card saved while its folder was being deleted can outlive it. Leave
@@ -308,7 +393,13 @@ export class DynamoStore {
   private async putFolder(folder: Folder) {
     const old = await this.table.get(sk("folders", folder.id));
     await this.transact(
-      [{ type: "put", item: { sk: sk("folders", folder.id), ...folder, rev: rev(old) + 1 }, cond: unchanged(old) }],
+      [
+        {
+          type: "put",
+          item: { sk: sk("folders", folder.id), ...folder, rev: rev(old) + 1 },
+          cond: unchanged(old),
+        },
+      ],
       {},
     );
   }
@@ -317,8 +408,16 @@ export class DynamoStore {
     const old = await this.table.get(sk("cards", card.id));
     const key = uniqueKey(card);
     const ops: Op[] = [
-      { type: "check", sk: sk("folders", card.folder_id), cond: { kind: "exists" } },
-      { type: "put", item: { sk: key, card_id: card.id }, cond: { kind: "absentOrEquals", attrs: { card_id: card.id } } },
+      {
+        type: "check",
+        sk: sk("folders", card.folder_id),
+        cond: { kind: "exists" },
+      },
+      {
+        type: "put",
+        item: { sk: key, card_id: card.id },
+        cond: { kind: "absentOrEquals", attrs: { card_id: card.id } },
+      },
       {
         type: "put",
         item: {
@@ -333,7 +432,11 @@ export class DynamoStore {
       },
     ];
     if (typeof old?.uniq === "string" && old.uniq !== key) {
-      ops.push({ type: "delete", sk: old.uniq, cond: { kind: "absentOrEquals", attrs: { card_id: card.id } } });
+      ops.push({
+        type: "delete",
+        sk: old.uniq,
+        cond: { kind: "absentOrEquals", attrs: { card_id: card.id } },
+      });
     }
     await this.transact(ops, {
       0: new Refused("23503", "That folder no longer exists"),
@@ -348,14 +451,31 @@ export class DynamoStore {
   private async putMove(table: "purchases" | "sales", row: Purchase | Sale) {
     const field = table === "purchases" ? "bought" : "sold";
     const amount = (r: Item | Purchase | Sale | undefined) =>
-      Number(table === "purchases" ? (r as Purchase | undefined)?.quantity ?? 0 : (r as Sale | undefined)?.sell_quantity ?? 0);
+      Number(
+        table === "purchases"
+          ? ((r as Purchase | undefined)?.quantity ?? 0)
+          : ((r as Sale | undefined)?.sell_quantity ?? 0),
+      );
 
     const old = await this.table.get(sk(table, row.id));
-    const cardIds = [...new Set([row.card_id, ...(typeof old?.card_id === "string" ? [old.card_id] : [])])];
-    const cards = await Promise.all(cardIds.map((c) => this.table.get(sk("cards", c))));
+    const cardIds = [
+      ...new Set([
+        row.card_id,
+        ...(typeof old?.card_id === "string" ? [old.card_id] : []),
+      ]),
+    ];
+    const cards = await Promise.all(
+      cardIds.map((c) => this.table.get(sk("cards", c))),
+    );
     if (!cards[0]) throw new Refused("23503", "That card no longer exists");
 
-    const ops: Op[] = [{ type: "put", item: { sk: sk(table, row.id), ...row, rev: rev(old) + 1 }, cond: unchanged(old) }];
+    const ops: Op[] = [
+      {
+        type: "put",
+        item: { sk: sk(table, row.id), ...row, rev: rev(old) + 1 },
+        cond: unchanged(old),
+      },
+    ];
     cardIds.forEach((cardId, i) => {
       const card = cards[i];
       if (!card) return; // The old card is gone, and its totals with it.
@@ -364,7 +484,8 @@ export class DynamoStore {
       if (cardId === row.card_id) total += amount(row);
       const bought = field === "bought" ? total : Number(card.bought ?? 0);
       const sold = field === "sold" ? total : Number(card.sold ?? 0);
-      if (sold > bought) throw broken(`Cannot sell ${sold} copies; only ${bought} bought`);
+      if (sold > bought)
+        throw broken(`Cannot sell ${sold} copies; only ${bought} bought`);
       ops.push({
         type: "put",
         item: { ...card, [field]: total, rev: rev(card) + 1 },
@@ -378,14 +499,24 @@ export class DynamoStore {
     const old = await this.table.get(sk(table, rowId));
     if (!old) return;
     const ops: Op[] = [{ type: "delete", sk: old.sk, cond: unchanged(old) }];
-    const card = typeof old.card_id === "string" ? await this.table.get(sk("cards", old.card_id)) : undefined;
+    const card =
+      typeof old.card_id === "string"
+        ? await this.table.get(sk("cards", old.card_id))
+        : undefined;
     if (card) {
       const field = table === "purchases" ? "bought" : "sold";
-      const total = Number(card[field] ?? 0) - Number(table === "purchases" ? old.quantity : old.sell_quantity);
+      const total =
+        Number(card[field] ?? 0) -
+        Number(table === "purchases" ? old.quantity : old.sell_quantity);
       const bought = field === "bought" ? total : Number(card.bought ?? 0);
       const sold = field === "sold" ? total : Number(card.sold ?? 0);
-      if (sold > bought) throw broken(`Cannot sell ${sold} copies; only ${bought} bought`);
-      ops.push({ type: "put", item: { ...card, [field]: total, rev: rev(card) + 1 }, cond: unchanged(card) });
+      if (sold > bought)
+        throw broken(`Cannot sell ${sold} copies; only ${bought} bought`);
+      ops.push({
+        type: "put",
+        item: { ...card, [field]: total, rev: rev(card) + 1 },
+        cond: unchanged(card),
+      });
     }
     await this.transact(ops, {});
   }
@@ -400,12 +531,17 @@ export class DynamoStore {
     const children = all
       .filter(
         (i) =>
-          (i.sk.startsWith(PREFIX.purchases) || i.sk.startsWith(PREFIX.sales)) &&
+          (i.sk.startsWith(PREFIX.purchases) ||
+            i.sk.startsWith(PREFIX.sales)) &&
           doomed.has(String(i.card_id)),
       )
       .map((i) => i.sk);
-    const cards = all.filter((i) => i.sk.startsWith(PREFIX.cards) && doomed.has(String(i.id)));
-    const keys = all.filter((i) => i.sk.startsWith("UNIQ#") && doomed.has(String(i.card_id))).map((i) => i.sk);
+    const cards = all.filter(
+      (i) => i.sk.startsWith(PREFIX.cards) && doomed.has(String(i.id)),
+    );
+    const keys = all
+      .filter((i) => i.sk.startsWith("UNIQ#") && doomed.has(String(i.card_id)))
+      .map((i) => i.sk);
     await this.table.deleteMany([...children, ...keys]);
     await this.table.deleteMany(cards.map((c) => c.sk));
   }

@@ -29,7 +29,8 @@ const refuse = (status: number, message: string, code = "") =>
   NextResponse.json({ ok: false, code, message }, { status });
 
 export async function POST(request: NextRequest) {
-  if (isLocalMode || dataBackend !== "dynamodb") return refuse(404, "DynamoDB sync is not turned on");
+  if (isLocalMode || dataBackend !== "dynamodb")
+    return refuse(404, "DynamoDB sync is not turned on");
   const tableName = process.env.DYNAMODB_TABLE;
   if (!tableName) return refuse(500, "DYNAMODB_TABLE is not set");
 
@@ -42,14 +43,22 @@ export async function POST(request: NextRequest) {
 
   const raw = await request.text();
   if (raw.length > MAX_BODY) return refuse(413, "Change is too large", "23514");
-  let body: { op?: string; table?: string; row?: unknown; id?: unknown; card?: unknown };
+  let body: {
+    op?: string;
+    table?: string;
+    row?: unknown;
+    id?: unknown;
+    card?: unknown;
+  };
   try {
     body = JSON.parse(raw);
   } catch {
     return refuse(400, "Bad request", "23514");
   }
 
-  const store = new DynamoStore(dynamoTable(documentClient(), tableName, user.id));
+  const store = new DynamoStore(
+    dynamoTable(documentClient(), tableName, user.id),
+  );
   const table = body.table as Table;
   const knownTable = TABLES.includes(table);
 
@@ -57,7 +66,10 @@ export async function POST(request: NextRequest) {
     switch (body.op) {
       case "upsert": {
         if (!knownTable) return refuse(400, "Unknown table", "23514");
-        const res = await store.upsert(table, body.row as Record<string, unknown>);
+        const res = await store.upsert(
+          table,
+          body.row as Record<string, unknown>,
+        );
         return NextResponse.json(res, { status: res.ok ? 200 : 409 });
       }
       case "remove": {
@@ -66,7 +78,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(res, { status: res.ok ? 200 : 409 });
       }
       case "findMatchingCard":
-        return NextResponse.json({ ok: true, data: await store.findMatchingCard(body.card as Card) });
+        return NextResponse.json({
+          ok: true,
+          data: await store.findMatchingCard(body.card as Card),
+        });
       case "fetchAll":
         return NextResponse.json({ ok: true, data: await store.fetchAll() });
       default:

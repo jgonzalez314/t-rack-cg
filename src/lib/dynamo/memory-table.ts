@@ -1,7 +1,14 @@
 // An in-memory ItemTable for tests. It checks conditions the same way
 // DynamoDB does, and applies a transaction all or nothing.
 
-import { ConditionFailed, MAX_TRANSACTION, type Cond, type Item, type ItemTable, type Op } from "./table";
+import {
+  ConditionFailed,
+  MAX_TRANSACTION,
+  type Cond,
+  type Item,
+  type ItemTable,
+  type Op,
+} from "./table";
 
 export class MemoryTable implements ItemTable {
   items = new Map<string, Item>();
@@ -32,14 +39,18 @@ export class MemoryTable implements ItemTable {
   }
 
   async transact(ops: Op[]) {
-    if (ops.length > MAX_TRANSACTION) throw new Error("Too many changes in one transaction");
+    if (ops.length > MAX_TRANSACTION)
+      throw new Error("Too many changes in one transaction");
     const sks = ops.map((op) => (op.type === "put" ? op.item.sk : op.sk));
-    if (new Set(sks).size !== sks.length) throw new Error("Two operations on one item");
+    if (new Set(sks).size !== sks.length)
+      throw new Error("Two operations on one item");
     ops.forEach((op, i) => {
-      if (!this.met(op.cond, this.items.get(sks[i]))) throw new ConditionFailed(i);
+      if (!this.met(op.cond, this.items.get(sks[i])))
+        throw new ConditionFailed(i);
     });
     for (const op of ops) {
-      if (op.type === "put") this.items.set(op.item.sk, structuredClone(op.item));
+      if (op.type === "put")
+        this.items.set(op.item.sk, structuredClone(op.item));
       else if (op.type === "delete") this.items.delete(op.sk);
     }
   }

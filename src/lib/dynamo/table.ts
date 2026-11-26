@@ -55,8 +55,10 @@ export const userPk = (userId: string) => `USER#${userId}`;
 
 function condition(cond: Cond | undefined) {
   if (!cond) return {};
-  if (cond.kind === "absent") return { ConditionExpression: "attribute_not_exists(sk)" };
-  if (cond.kind === "exists") return { ConditionExpression: "attribute_exists(sk)" };
+  if (cond.kind === "absent")
+    return { ConditionExpression: "attribute_not_exists(sk)" };
+  if (cond.kind === "exists")
+    return { ConditionExpression: "attribute_exists(sk)" };
   const names: Record<string, string> = {};
   const values: Record<string, unknown> = {};
   const parts = Object.entries(cond.attrs).map(([attr, value], i) => {
@@ -91,7 +93,11 @@ export function dynamoTable(
   return {
     async get(sk) {
       const out = await client.send(
-        new GetCommand({ TableName: tableName, Key: { pk, sk }, ConsistentRead: true }),
+        new GetCommand({
+          TableName: tableName,
+          Key: { pk, sk },
+          ConsistentRead: true,
+        }),
       );
       return out.Item ? strip(out.Item) : undefined;
     },
@@ -116,19 +122,28 @@ export function dynamoTable(
     },
 
     async transact(ops) {
-      if (ops.length > MAX_TRANSACTION) throw new Error("Too many changes in one transaction");
+      if (ops.length > MAX_TRANSACTION)
+        throw new Error("Too many changes in one transaction");
       try {
         await client.send(
           new TransactWriteCommand({
             TransactItems: ops.map((op) => {
               if (op.type === "put") {
                 return {
-                  Put: { TableName: tableName, Item: { ...op.item, pk }, ...condition(op.cond) },
+                  Put: {
+                    TableName: tableName,
+                    Item: { ...op.item, pk },
+                    ...condition(op.cond),
+                  },
                 };
               }
               if (op.type === "delete") {
                 return {
-                  Delete: { TableName: tableName, Key: { pk, sk: op.sk }, ...condition(op.cond) },
+                  Delete: {
+                    TableName: tableName,
+                    Key: { pk, sk: op.sk },
+                    ...condition(op.cond),
+                  },
                 };
               }
               return {
@@ -142,8 +157,10 @@ export function dynamoTable(
           }),
         );
       } catch (e) {
-        const reasons = (e as { CancellationReasons?: { Code?: string }[] }).CancellationReasons;
-        const index = reasons?.findIndex((r) => r.Code === "ConditionalCheckFailed") ?? -1;
+        const reasons = (e as { CancellationReasons?: { Code?: string }[] })
+          .CancellationReasons;
+        const index =
+          reasons?.findIndex((r) => r.Code === "ConditionalCheckFailed") ?? -1;
         if (index >= 0) throw new ConditionFailed(index);
         throw e;
       }
@@ -151,7 +168,10 @@ export function dynamoTable(
 
     async deleteMany(sks) {
       for (let i = 0; i < sks.length; i += 25) {
-        let requests: Record<string, { DeleteRequest: { Key: Record<string, string> } }[]> = {
+        let requests: Record<
+          string,
+          { DeleteRequest: { Key: Record<string, string> } }[]
+        > = {
           [tableName]: sks
             .slice(i, i + 25)
             .map((sk) => ({ DeleteRequest: { Key: { pk, sk } } })),
@@ -159,8 +179,11 @@ export function dynamoTable(
         // DynamoDB may hand back some deletes to try again.
         for (let attempt = 0; requests[tableName]?.length; attempt++) {
           if (attempt === 5) throw new Error("DynamoDB is busy, try again");
-          if (attempt) await new Promise((r) => setTimeout(r, 100 * 2 ** attempt));
-          const out = await client.send(new BatchWriteCommand({ RequestItems: requests }));
+          if (attempt)
+            await new Promise((r) => setTimeout(r, 100 * 2 ** attempt));
+          const out = await client.send(
+            new BatchWriteCommand({ RequestItems: requests }),
+          );
           requests = (out.UnprocessedItems ?? {}) as typeof requests;
         }
       }

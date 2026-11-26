@@ -7,7 +7,8 @@ import { toResult, type BackendResult, type SyncBackend } from "./sync";
 
 export const SYNC_URL = "/api/sync";
 
-type Reply = { ok: true; data?: unknown } | { ok: false; code?: string; message?: string };
+type Reply =
+  { ok: true; data?: unknown } | { ok: false; code?: string; message?: string };
 
 async function call(body: unknown, fetcher: typeof fetch): Promise<Reply> {
   // A failed fetch throws a TypeError, which sync reads as being offline.
@@ -30,10 +31,15 @@ async function call(body: unknown, fetcher: typeof fetch): Promise<Reply> {
 
 function result(reply: Reply): BackendResult {
   if (reply.ok) return { ok: true };
-  return toResult({ code: reply.code ?? "", message: reply.message ?? "Sync failed" });
+  return toResult({
+    code: reply.code ?? "",
+    message: reply.message ?? "Sync failed",
+  });
 }
 
-export function httpBackend(fetcher: typeof fetch = (...a) => fetch(...a)): SyncBackend {
+export function httpBackend(
+  fetcher: typeof fetch = (...a) => fetch(...a),
+): SyncBackend {
   return {
     async upsert(table, row) {
       return result(await call({ op: "upsert", table, row }, fetcher));

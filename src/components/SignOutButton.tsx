@@ -30,7 +30,11 @@ export function SignOutButton() {
 
   return (
     <form action="/auth/signout" method="post" onSubmit={handleSubmit}>
-      <button type="submit" disabled={busy} className="text-[15px] font-medium text-accent">
+      <button
+        type="submit"
+        disabled={busy}
+        className="text-[15px] font-medium text-accent"
+      >
         {busy ? "Signing out…" : "Sign out"}
       </button>
     </form>

@@ -5,24 +5,36 @@ import type { LocalStore } from "@/lib/data/local-store";
 import { buildWorkbook, exportFileName } from "@/lib/export/workbook";
 import { savedSuggestions } from "@/lib/pricing/cache";
 
-const XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const XLSX_TYPE =
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 /**
  * Downloads the collection (or one folder) as a formatted Excel file. It is
  * built in the browser from saved data, so it works offline.
  */
-export function ExportButton({ store, folderId }: { store: LocalStore; folderId?: string }) {
+export function ExportButton({
+  store,
+  folderId,
+}: {
+  store: LocalStore;
+  folderId?: string;
+}) {
   const [error, setError] = useState<string | null>(null);
 
   function download() {
     try {
       const data = store.allData();
-      const bytes = buildWorkbook(data, { folderId, suggestions: savedSuggestions(data.cards) });
+      const bytes = buildWorkbook(data, {
+        folderId,
+        suggestions: savedSuggestions(data.cards),
+      });
       const blob = new Blob([bytes as BlobPart], { type: XLSX_TYPE });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = exportFileName(folderId ? store.getFolder(folderId) : undefined);
+      a.download = exportFileName(
+        folderId ? store.getFolder(folderId) : undefined,
+      );
       document.body.appendChild(a);
       a.click();
       a.remove();

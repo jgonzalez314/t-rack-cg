@@ -45,13 +45,15 @@ export interface Sheet {
 const enc = new TextEncoder();
 
 export function escapeXml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    // Characters XML 1.0 does not allow.
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, "");
+  return (
+    s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      // Characters XML 1.0 does not allow.
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, "")
+  );
 }
 
 /** 0 -> "A", 25 -> "Z", 26 -> "AA". */
@@ -68,7 +70,11 @@ export function columnName(index: number): string {
 
 /** Excel's day number for a date (days since 1899-12-30), using its calendar date. */
 export function excelDate(d: Date): number {
-  return (Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(1899, 11, 30)) / 86400000;
+  return (
+    (Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) -
+      Date.UTC(1899, 11, 30)) /
+    86400000
+  );
 }
 
 /** Excel's day number for "YYYY-MM-DD". */
@@ -81,7 +87,12 @@ export function excelDateFromIso(iso: string): number {
 export function sheetNames(names: string[]): string[] {
   const used = new Set<string>();
   return names.map((raw) => {
-    const base = (raw.replace(/[[\]:*?/\\]/g, " ").replace(/^'+|'+$/g, "").trim() || "Sheet").slice(0, 31);
+    const base = (
+      raw
+        .replace(/[[\]:*?/\\]/g, " ")
+        .replace(/^'+|'+$/g, "")
+        .trim() || "Sheet"
+    ).slice(0, 31);
     let name = base;
     for (let i = 2; used.has(name.toLowerCase()); i++) {
       const suffix = ` (${i})`;
@@ -96,10 +107,19 @@ export function sheetNames(names: string[]): string[] {
 
 class Styles {
   private numFmts = new Map<string, number>();
-  private fonts = ['<font><sz val="11"/><name val="Calibri"/><family val="2"/></font>'];
-  private fills = ['<fill><patternFill patternType="none"/></fill>', '<fill><patternFill patternType="gray125"/></fill>'];
-  private borders = ["<border><left/><right/><top/><bottom/><diagonal/></border>"];
-  private xfs = ['<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'];
+  private fonts = [
+    '<font><sz val="11"/><name val="Calibri"/><family val="2"/></font>',
+  ];
+  private fills = [
+    '<fill><patternFill patternType="none"/></fill>',
+    '<fill><patternFill patternType="gray125"/></fill>',
+  ];
+  private borders = [
+    "<border><left/><right/><top/><bottom/><diagonal/></border>",
+  ];
+  private xfs = [
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>',
+  ];
   private ids = new Map<string, number>();
 
   private static BUILTIN: Record<string, number> = {
@@ -127,8 +147,12 @@ class Styles {
 
     let numFmtId = 0;
     if (style.numFmt) {
-      numFmtId = Styles.BUILTIN[style.numFmt] ?? this.numFmts.get(style.numFmt) ?? 164 + this.numFmts.size;
-      if (!(style.numFmt in Styles.BUILTIN)) this.numFmts.set(style.numFmt, numFmtId);
+      numFmtId =
+        Styles.BUILTIN[style.numFmt] ??
+        this.numFmts.get(style.numFmt) ??
+        164 + this.numFmts.size;
+      if (!(style.numFmt in Styles.BUILTIN))
+        this.numFmts.set(style.numFmt, numFmtId);
     }
     const fontId = this.indexOf(
       this.fonts,
@@ -146,7 +170,9 @@ class Styles {
         ? this.indexOf(
             this.borders,
             `<border><left/><right/>${style.borderTop ? `<top style="thin">${line}</top>` : "<top/>"}${
-              style.borderBottom ? `<bottom style="medium">${line}</bottom>` : "<bottom/>"
+              style.borderBottom
+                ? `<bottom style="medium">${line}</bottom>`
+                : "<bottom/>"
             }<diagonal/></border>`,
           )
         : 0;
@@ -166,7 +192,11 @@ class Styles {
       borderId ? 'applyBorder="1"' : "",
       align ? 'applyAlignment="1"' : "",
     ].filter(Boolean);
-    this.xfs.push(align ? `<xf ${attrs.join(" ")}>${align}</xf>` : `<xf ${attrs.join(" ")}/>`);
+    this.xfs.push(
+      align
+        ? `<xf ${attrs.join(" ")}>${align}</xf>`
+        : `<xf ${attrs.join(" ")}/>`,
+    );
     const id = this.xfs.length - 1;
     this.ids.set(key, id);
     return id;
@@ -174,12 +204,17 @@ class Styles {
 
   xml(): string {
     const numFmts = [...this.numFmts]
-      .map(([code, id]) => `<numFmt numFmtId="${id}" formatCode="${escapeXml(code)}"/>`)
+      .map(
+        ([code, id]) =>
+          `<numFmt numFmtId="${id}" formatCode="${escapeXml(code)}"/>`,
+      )
       .join("");
     return (
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-      (this.numFmts.size ? `<numFmts count="${this.numFmts.size}">${numFmts}</numFmts>` : "") +
+      (this.numFmts.size
+        ? `<numFmts count="${this.numFmts.size}">${numFmts}</numFmts>`
+        : "") +
       `<fonts count="${this.fonts.length}">${this.fonts.join("")}</fonts>` +
       `<fills count="${this.fills.length}">${this.fills.join("")}</fills>` +
       `<borders count="${this.borders.length}">${this.borders.join("")}</borders>` +
@@ -194,7 +229,9 @@ class Styles {
 // ---- sheets -----------------------------------------------------------------
 
 function toCell(c: Cell | CellValue): Cell {
-  return c !== null && typeof c === "object" && !(c instanceof Date) ? c : { value: c };
+  return c !== null && typeof c === "object" && !(c instanceof Date)
+    ? c
+    : { value: c };
 }
 
 /** Rough display width of a cell, in characters. */
@@ -206,7 +243,9 @@ function displayWidth(cell: Cell): number {
     const fmt = cell.style?.numFmt ?? "";
     if (fmt.includes("yy")) return 10;
     if (fmt.includes("%")) return 7;
-    const text = Math.abs(v).toLocaleString("en-US", { maximumFractionDigits: 2 });
+    const text = Math.abs(v).toLocaleString("en-US", {
+      maximumFractionDigits: 2,
+    });
     return text.length + (fmt.includes("$") ? 4 : 1);
   }
   return String(v)
@@ -214,19 +253,33 @@ function displayWidth(cell: Cell): number {
     .reduce((m, line) => Math.max(m, line.length), 0);
 }
 
-function sheetXml(sheet: Sheet, styles: Styles, strings: SharedStrings): string {
+function sheetXml(
+  sheet: Sheet,
+  styles: Styles,
+  strings: SharedStrings,
+): string {
   const cells = sheet.rows.map((r) => r.map(toCell));
   const columns = cells.reduce((m, r) => Math.max(m, r.length), 0);
 
   const widths = Array.from({ length: columns }, (_, i) => {
     const given = sheet.widths?.[i];
     if (given) return given;
-    const longest = cells.reduce((m, r) => Math.max(m, r[i] ? displayWidth(r[i]) * (r[i].style?.bold ? 1.1 : 1) : 0), 0);
+    const longest = cells.reduce(
+      (m, r) =>
+        Math.max(
+          m,
+          r[i] ? displayWidth(r[i]) * (r[i].style?.bold ? 1.1 : 1) : 0,
+        ),
+      0,
+    );
     return Math.min(45, Math.max(8, Math.ceil(longest) + 2));
   });
   const cols = widths.length
     ? `<cols>${widths
-        .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w.toFixed(2)}" customWidth="1"/>`)
+        .map(
+          (w, i) =>
+            `<col min="${i + 1}" max="${i + 1}" width="${w.toFixed(2)}" customWidth="1"/>`,
+        )
         .join("")}</cols>`
     : "";
 
@@ -248,9 +301,12 @@ function sheetXml(sheet: Sheet, styles: Styles, strings: SharedStrings): string 
             if (!Number.isFinite(v)) return s ? `<c r="${at}"${sAttr}/>` : "";
             return `<c r="${at}"${sAttr}>${f}<v>${v}</v></c>`;
           }
-          if (v instanceof Date) return `<c r="${at}"${sAttr}>${f}<v>${excelDate(v)}</v></c>`;
-          if (typeof v === "boolean") return `<c r="${at}"${sAttr} t="b">${f}<v>${v ? 1 : 0}</v></c>`;
-          if (f) return `<c r="${at}"${sAttr} t="str">${f}<v>${escapeXml(v)}</v></c>`;
+          if (v instanceof Date)
+            return `<c r="${at}"${sAttr}>${f}<v>${excelDate(v)}</v></c>`;
+          if (typeof v === "boolean")
+            return `<c r="${at}"${sAttr} t="b">${f}<v>${v ? 1 : 0}</v></c>`;
+          if (f)
+            return `<c r="${at}"${sAttr} t="str">${f}<v>${escapeXml(v)}</v></c>`;
           return `<c r="${at}"${sAttr} t="s"><v>${strings.id(v)}</v></c>`;
         })
         .join("");
@@ -264,8 +320,11 @@ function sheetXml(sheet: Sheet, styles: Styles, strings: SharedStrings): string 
     : '<sheetView workbookViewId="0"/>';
   const lastCol = columnName(Math.max(0, columns - 1));
   const filter =
-    sheet.filterRows && columns ? `<autoFilter ref="A1:${lastCol}${Math.max(1, sheet.filterRows)}"/>` : "";
-  const dimension = cells.length && columns ? `A1:${lastCol}${cells.length}` : "A1";
+    sheet.filterRows && columns
+      ? `<autoFilter ref="A1:${lastCol}${Math.max(1, sheet.filterRows)}"/>`
+      : "";
+  const dimension =
+    cells.length && columns ? `A1:${lastCol}${cells.length}` : "A1";
 
   return (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
@@ -301,7 +360,10 @@ class SharedStrings {
 
   xml(): string {
     const items = this.list
-      .map((s) => `<si><t${/^\s|\s$|\n/.test(s) ? ' xml:space="preserve"' : ""}>${escapeXml(s)}</t></si>`)
+      .map(
+        (s) =>
+          `<si><t${/^\s|\s$|\n/.test(s) ? ' xml:space="preserve"' : ""}>${escapeXml(s)}</t></si>`,
+      )
       .join("");
     return (
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
@@ -313,13 +375,18 @@ class SharedStrings {
 // ---- workbook ---------------------------------------------------------------
 
 /** Builds the .xlsx file's bytes. */
-export function buildXlsx(sheets: Sheet[], options: { title?: string; created?: Date } = {}): Uint8Array {
+export function buildXlsx(
+  sheets: Sheet[],
+  options: { title?: string; created?: Date } = {},
+): Uint8Array {
   if (!sheets.length) throw new Error("A workbook needs at least one sheet");
   const styles = new Styles();
   const strings = new SharedStrings();
   const names = sheetNames(sheets.map((s) => s.name));
   const sheetFiles = sheets.map((s) => sheetXml(s, styles, strings));
-  const created = (options.created ?? new Date()).toISOString().replace(/\.\d+Z$/, "Z");
+  const created = (options.created ?? new Date())
+    .toISOString()
+    .replace(/\.\d+Z$/, "Z");
   const xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
 
   const filterNames = sheets
@@ -366,7 +433,9 @@ export function buildXlsx(sheets: Sheet[], options: { title?: string; created?: 
       "docProps/core.xml",
       xml +
         '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">' +
-        (options.title ? `<dc:title>${escapeXml(options.title)}</dc:title>` : "") +
+        (options.title
+          ? `<dc:title>${escapeXml(options.title)}</dc:title>`
+          : "") +
         "<dc:creator>T-rack-CG</dc:creator>" +
         `<dcterms:created xsi:type="dcterms:W3CDTF">${created}</dcterms:created>` +
         `<dcterms:modified xsi:type="dcterms:W3CDTF">${created}</dcterms:modified>` +
@@ -401,12 +470,18 @@ export function buildXlsx(sheets: Sheet[], options: { title?: string; created?: 
         `<Relationship Id="rId${sheets.length + 2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>` +
         "</Relationships>",
     ],
-    ...sheetFiles.map((x, i): [string, string] => [`xl/worksheets/sheet${i + 1}.xml`, x]),
+    ...sheetFiles.map((x, i): [string, string] => [
+      `xl/worksheets/sheet${i + 1}.xml`,
+      x,
+    ]),
     ["xl/styles.xml", styles.xml()],
     ["xl/sharedStrings.xml", strings.xml()],
   ];
 
-  return zip(files.map(([name, text]) => ({ name, data: enc.encode(text) })), options.created ?? new Date());
+  return zip(
+    files.map(([name, text]) => ({ name, data: enc.encode(text) })),
+    options.created ?? new Date(),
+  );
 }
 
 // ---- zip --------------------------------------------------------------------
@@ -423,14 +498,24 @@ export function crc32(data: Uint8Array): number {
     }
   }
   let crc = 0xffffffff;
-  for (let i = 0; i < data.length; i++) crc = crcTable[(crc ^ data[i]) & 0xff] ^ (crc >>> 8);
+  for (let i = 0; i < data.length; i++)
+    crc = crcTable[(crc ^ data[i]) & 0xff] ^ (crc >>> 8);
   return (crc ^ 0xffffffff) >>> 0;
 }
 
 /** A zip archive with the files stored uncompressed. */
-export function zip(files: { name: string; data: Uint8Array }[], when: Date = new Date()): Uint8Array {
-  const time = (when.getHours() << 11) | (when.getMinutes() << 5) | (when.getSeconds() >> 1);
-  const date = (Math.max(0, when.getFullYear() - 1980) << 9) | ((when.getMonth() + 1) << 5) | when.getDate();
+export function zip(
+  files: { name: string; data: Uint8Array }[],
+  when: Date = new Date(),
+): Uint8Array {
+  const time =
+    (when.getHours() << 11) |
+    (when.getMinutes() << 5) |
+    (when.getSeconds() >> 1);
+  const date =
+    (Math.max(0, when.getFullYear() - 1980) << 9) |
+    ((when.getMonth() + 1) << 5) |
+    when.getDate();
 
   const locals: Uint8Array[] = [];
   const centrals: Uint8Array[] = [];

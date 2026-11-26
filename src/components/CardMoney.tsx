@@ -26,7 +26,11 @@ export function CardTotals({ card }: { card: CardSummary }) {
       <Stat label="Sold" value={String(card.copies_sold)} />
       <Stat label="Avg cost" value={money(card.average_cost)} />
       <Stat label="Received" value={money(card.total_received)} />
-      <Stat label="Profit" value={money(card.realized_profit)} tone={profitTone(card.realized_profit)} />
+      <Stat
+        label="Profit"
+        value={money(card.realized_profit)}
+        tone={profitTone(card.realized_profit)}
+      />
       {card.asking_price !== null && card.quantity_owned > 0 && (
         <Stat label="Asking" value={money(card.asking_price)} />
       )}
@@ -34,11 +38,21 @@ export function CardTotals({ card }: { card: CardSummary }) {
   );
 }
 
-function Stat({ label, value, tone = "" }: { label: string; value: string; tone?: string }) {
+function Stat({
+  label,
+  value,
+  tone = "",
+}: {
+  label: string;
+  value: string;
+  tone?: string;
+}) {
   return (
     <div>
       <dt className={labelClass}>{label}</dt>
-      <dd className={`mt-0.5 text-[15px] font-semibold tabular-nums ${tone}`}>{value}</dd>
+      <dd className={`mt-0.5 text-[15px] font-semibold tabular-nums ${tone}`}>
+        {value}
+      </dd>
     </div>
   );
 }
@@ -68,7 +82,13 @@ export function CardMoney({
         kind="buy"
         onSubmit={(v) => {
           const r = run((s) =>
-            s.addPurchase({ card_id: card.id, buy_date: v.date, buy_price: v.price, buy_percentage: v.percent, quantity: v.quantity }),
+            s.addPurchase({
+              card_id: card.id,
+              buy_date: v.date,
+              buy_price: v.price,
+              buy_percentage: v.percent,
+              quantity: v.quantity,
+            }),
           );
           setError(r.error ?? null);
           return !r.error;
@@ -84,7 +104,9 @@ export function CardMoney({
           percent: p.buy_percentage,
           quantity: p.quantity,
         }))}
-        onDelete={(id) => setError(run((s) => s.deletePurchase(id)).error ?? null)}
+        onDelete={(id) =>
+          setError(run((s) => s.deletePurchase(id)).error ?? null)
+        }
       />
 
       <EntryForm
@@ -97,7 +119,11 @@ export function CardMoney({
                 type="checkbox"
                 className="h-4 w-4 accent-accent"
                 checked={sellPriceSource === "tcgplayer"}
-                onChange={(e) => updateSettings({ sellPriceSource: e.target.checked ? "tcgplayer" : "manual" })}
+                onChange={(e) =>
+                  updateSettings({
+                    sellPriceSource: e.target.checked ? "tcgplayer" : "manual",
+                  })
+                }
               />
               Use the TCGplayer price as the sell price (all raw cards)
             </label>
@@ -105,7 +131,13 @@ export function CardMoney({
         }
         onSubmit={(v) => {
           const r = run((s) =>
-            s.addSale({ card_id: card.id, sell_date: v.date, sell_price: v.price, sell_percentage: v.percent, sell_quantity: v.quantity }),
+            s.addSale({
+              card_id: card.id,
+              sell_date: v.date,
+              sell_price: v.price,
+              sell_percentage: v.percent,
+              sell_quantity: v.quantity,
+            }),
           );
           setError(r.error ?? null);
           return !r.error;
@@ -162,7 +194,12 @@ function EntryForm({
       aria-label={`Add ${kind}`}
       onSubmit={(e) => {
         e.preventDefault();
-        const ok = onSubmit({ date, price: Number(price), percent: Number(percent), quantity: Number(quantity) });
+        const ok = onSubmit({
+          date,
+          price: Number(price),
+          percent: Number(percent),
+          quantity: Number(quantity),
+        });
         if (ok) {
           setPrice(autoText);
           setQuantity("1");
@@ -173,37 +210,76 @@ function EntryForm({
       <h4 className="text-[15px] font-semibold">Add a {kind}</h4>
       {setting}
       {autoPrice === null && (
-        <p className="text-xs text-muted">No TCGplayer price for this card yet, so enter the sell price.</p>
+        <p className="text-xs text-muted">
+          No TCGplayer price for this card yet, so enter the sell price.
+        </p>
       )}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <label className="flex flex-col gap-1 text-xs font-medium text-ink-soft">
           {verb} date
-          <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
+          <input
+            type="date"
+            required
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className={inputClass}
+          />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-ink-soft">
           {verb} price ($ market)
-          <input type="number" inputMode="decimal" required min={0} step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} className={inputClass} />
+          <input
+            type="number"
+            inputMode="decimal"
+            required
+            min={0}
+            step="0.01"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            className={inputClass}
+          />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-ink-soft">
           {verb} percentage (%)
-          <input type="number" inputMode="decimal" required min={0} step="any" value={percent} onChange={(e) => setPercent(e.target.value)} className={inputClass} />
+          <input
+            type="number"
+            inputMode="decimal"
+            required
+            min={0}
+            step="any"
+            value={percent}
+            onChange={(e) => setPercent(e.target.value)}
+            className={inputClass}
+          />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-ink-soft">
           {kind === "buy" ? "Quantity" : "Sold quantity (0 = listed)"}
-          <input type="number" inputMode="numeric" required min={kind === "buy" ? 1 : 0} step={1} value={quantity} onChange={(e) => setQuantity(e.target.value)} className={inputClass} />
+          <input
+            type="number"
+            inputMode="numeric"
+            required
+            min={kind === "buy" ? 1 : 0}
+            step={1}
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            className={inputClass}
+          />
         </label>
       </div>
       <div className="flex items-center gap-3">
         <button
           type="submit"
           className={`rounded-xl px-4 py-2 text-sm font-semibold ${
-            kind === "buy" ? "bg-accent text-accent-ink" : "border border-line bg-surface text-ink"
+            kind === "buy"
+              ? "bg-accent text-accent-ink"
+              : "border border-line bg-surface text-ink"
           }`}
         >
           {listing ? "Add listing" : `Add ${kind}`}
         </button>
         <span className="text-sm text-muted tabular-nums">
-          {listing ? `Asking: ${money(each)} each` : `${kind === "buy" ? "Cost" : "Received"}: ${money(total)}`}
+          {listing
+            ? `Asking: ${money(each)} each`
+            : `${kind === "buy" ? "Cost" : "Received"}: ${money(total)}`}
         </span>
       </div>
     </form>
@@ -244,16 +320,26 @@ function EntryList({
               </span>
               {r.quantity === 0 ? (
                 <span className="min-w-0 flex-1 tabular-nums text-ink-soft">
-                  {r.date} · Listed, not sold · {money(r.price)} at {r.percent}% ={" "}
-                  <span className="font-semibold text-ink">{money((r.price * r.percent) / 100)} each</span>
+                  {r.date} · Listed, not sold · {money(r.price)} at {r.percent}%
+                  ={" "}
+                  <span className="font-semibold text-ink">
+                    {money((r.price * r.percent) / 100)} each
+                  </span>
                 </span>
               ) : (
                 <span className="min-w-0 flex-1 tabular-nums text-ink-soft">
                   {r.date} · {r.quantity} × {money(r.price)} at {r.percent}% ={" "}
-                  <span className="font-semibold text-ink">{money((r.quantity * r.price * r.percent) / 100)}</span>
+                  <span className="font-semibold text-ink">
+                    {money((r.quantity * r.price * r.percent) / 100)}
+                  </span>
                 </span>
               )}
-              <button type="button" onClick={() => onDelete(r.id)} className="shrink-0 font-medium text-neg" aria-label={`Delete ${title.toLowerCase().slice(0, -1)} from ${r.date}`}>
+              <button
+                type="button"
+                onClick={() => onDelete(r.id)}
+                className="shrink-0 font-medium text-neg"
+                aria-label={`Delete ${title.toLowerCase().slice(0, -1)} from ${r.date}`}
+              >
                 Delete
               </button>
             </li>
