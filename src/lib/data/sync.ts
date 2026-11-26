@@ -6,7 +6,13 @@
 
 import type { Card, Folder, Purchase, Sale } from "./types";
 import { CACHE_KEY, PICK_KEY } from "@/lib/pricing/cache";
-import { STORAGE_KEY, type Data, type KeyValueStorage, type LocalStore, type Table } from "./local-store";
+import {
+  STORAGE_KEY,
+  type Data,
+  type KeyValueStorage,
+  type LocalStore,
+  type Table,
+} from "./local-store";
 import { OUTBOX_KEY, type Outbox } from "./outbox";
 
 export const SYNC_STATE_KEY = "t-rack-cg:sync:v1";
@@ -42,7 +48,10 @@ export type BackendResult =
 
 /** What sync needs from the server. The Supabase version is below. */
 export interface SyncBackend {
-  upsert(table: Table, row: Folder | Card | Purchase | Sale): Promise<BackendResult>;
+  upsert(
+    table: Table,
+    row: Folder | Card | Purchase | Sale,
+  ): Promise<BackendResult>;
   remove(table: Table, id: string): Promise<BackendResult>;
   /** The server's id for a card that matches this one under the folder's unique rules. */
   findMatchingCard(card: Card): Promise<string | null>;
@@ -77,7 +86,10 @@ export function lastSyncedAt(storage: KeyValueStorage): string | undefined {
 }
 
 function isNetworkError(e: unknown) {
-  return e instanceof TypeError || (e instanceof Error && /fetch|network/i.test(e.message));
+  return (
+    e instanceof TypeError ||
+    (e instanceof Error && /fetch|network/i.test(e.message))
+  );
 }
 
 export async function syncNow(opts: {
@@ -107,10 +119,14 @@ export async function syncNow(opts: {
     // the pull below does not replace it.
     if (!state.seeded) {
       const { folders, cards, purchases, sales } = store.allData();
-      for (const row of folders) outbox.add({ kind: "upsert", table: "folders", row });
-      for (const row of cards) outbox.add({ kind: "upsert", table: "cards", row });
-      for (const row of purchases) outbox.add({ kind: "upsert", table: "purchases", row });
-      for (const row of sales) outbox.add({ kind: "upsert", table: "sales", row });
+      for (const row of folders)
+        outbox.add({ kind: "upsert", table: "folders", row });
+      for (const row of cards)
+        outbox.add({ kind: "upsert", table: "cards", row });
+      for (const row of purchases)
+        outbox.add({ kind: "upsert", table: "purchases", row });
+      for (const row of sales)
+        outbox.add({ kind: "upsert", table: "sales", row });
       writeState(storage, { ...state, seeded: true });
     }
 
@@ -126,7 +142,11 @@ export async function syncNow(opts: {
         outbox.shift();
         continue;
       }
-      if (change.kind === "upsert" && change.table === "cards" && result.duplicate) {
+      if (
+        change.kind === "upsert" &&
+        change.table === "cards" &&
+        result.duplicate
+      ) {
         // Another device already added this card to the folder. Use that
         // entry, so purchases made here add to the same quantity.
         const serverId = await backend.findMatchingCard(change.row);
@@ -153,14 +173,24 @@ export async function syncNow(opts: {
     if (outbox.size === 0) store.replaceAll(server);
 
     const at = now().toISOString();
-    writeState(storage, { ...readState(storage), seeded: true, lastSyncedAt: at });
+    writeState(storage, {
+      ...readState(storage),
+      seeded: true,
+      lastSyncedAt: at,
+    });
     if (rejected.length) {
-      return { status: "error", message: `Some changes were not saved: ${rejected.join("; ")}` };
+      return {
+        status: "error",
+        message: `Some changes were not saved: ${rejected.join("; ")}`,
+      };
     }
     return { status: "synced", at };
   } catch (e) {
     if (isNetworkError(e)) return { status: "offline" };
-    return { status: "error", message: e instanceof Error ? e.message : String(e) };
+    return {
+      status: "error",
+      message: e instanceof Error ? e.message : String(e),
+    };
   }
 }
 
@@ -174,9 +204,12 @@ type SupabaseLike = {
   };
 };
 
-function toResult(error: { code?: string; message: string } | null): BackendResult {
+function toResult(
+  error: { code?: string; message: string } | null,
+): BackendResult {
   if (!error) return { ok: true };
-  if (!error.code && /fetch|network/i.test(error.message)) throw new TypeError(error.message);
+  if (!error.code && /fetch|network/i.test(error.message))
+    throw new TypeError(error.message);
   // Postgres error codes: class 23 is a broken rule, 42501 is a blocked row.
   // Anything else (timeouts, server errors) is worth trying again.
   const permanent = /^(23|42501|PGRST)/.test(error.code ?? "");
@@ -194,7 +227,9 @@ export function supabaseBackend(client: SupabaseLike): SyncBackend {
   return {
     async upsert(table, row) {
       // user_id is filled in by the database from the signed-in user.
-      const { error } = await client.from(table).upsert(row, { onConflict: "id" });
+      const { error } = await client
+        .from(table)
+        .upsert(row, { onConflict: "id" });
       return toResult(error);
     },
     async remove(table, id) {
@@ -215,7 +250,9 @@ export function supabaseBackend(client: SupabaseLike): SyncBackend {
               .eq("game", card.game)
               .eq("language", card.language)
               .eq("condition", card.condition)
-          : q.eq("grading_company", card.grading_company).eq("cert_number", card.cert_number);
+          : q
+              .eq("grading_company", card.grading_company)
+              .eq("cert_number", card.cert_number);
       const { data, error } = await q.limit(1);
       toResult(error);
       return data?.[0]?.id ?? null;
@@ -231,16 +268,22 @@ export function supabaseBackend(client: SupabaseLike): SyncBackend {
           ),
         client
           .from("purchases")
-          .select(`id, card_id, buy_date, buy_price, buy_percentage, quantity, ${stamps}`),
+          .select(
+            `id, card_id, buy_date, buy_price, buy_percentage, quantity, ${stamps}`,
+          ),
         client
           .from("sales")
-          .select(`id, card_id, sell_date, sell_price, sell_percentage, sell_quantity, ${stamps}`),
+          .select(
+            `id, card_id, sell_date, sell_price, sell_percentage, sell_quantity, ${stamps}`,
+          ),
       ]);
       for (const r of results) {
         const res = toResult(r.error);
         if (!res.ok) throw new Error(res.message);
       }
-      const [folders, cards, purchases, sales] = results.map((r) => r.data ?? []);
+      const [folders, cards, purchases, sales] = results.map(
+        (r) => r.data ?? [],
+      );
       // Postgres numeric columns can arrive as strings.
       return {
         folders: folders as Folder[],

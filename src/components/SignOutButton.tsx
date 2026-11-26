@@ -37,8 +37,17 @@ export function SignOutButton() {
   }
 
   return (
-    <form action="/auth/signout" method="post" onSubmit={handleSubmit} className="text-right">
-      <button type="submit" disabled={busy} className="text-[15px] font-medium text-accent">
+    <form
+      action="/auth/signout"
+      method="post"
+      onSubmit={handleSubmit}
+      className="text-right"
+    >
+      <button
+        type="submit"
+        disabled={busy}
+        className="text-[15px] font-medium text-accent"
+      >
         {busy ? "Signing out…" : "Sign out"}
       </button>
       {message && <p className="text-xs text-muted">{message}</p>}

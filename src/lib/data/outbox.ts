@@ -5,7 +5,10 @@ import type { Change, KeyValueStorage } from "./local-store";
 
 export const OUTBOX_KEY = "t-rack-cg:outbox:v1";
 
-type MoneyRow = Extract<Change, { kind: "upsert"; table: "purchases" | "sales" }>;
+type MoneyRow = Extract<
+  Change,
+  { kind: "upsert"; table: "purchases" | "sales" }
+>;
 const isMoneyRow = (c: Change): c is MoneyRow =>
   c.kind === "upsert" && (c.table === "purchases" || c.table === "sales");
 
@@ -56,13 +59,18 @@ export class Outbox {
     if (change.kind === "delete" && change.table === "folders") {
       const cardIds = new Set(
         rest.flatMap((c) =>
-          c.kind === "upsert" && c.table === "cards" && c.row.folder_id === id ? [c.row.id] : [],
+          c.kind === "upsert" && c.table === "cards" && c.row.folder_id === id
+            ? [c.row.id]
+            : [],
         ),
       );
       rest = rest.filter(
         (c) =>
-          !(c.kind === "upsert" && c.table === "cards" && cardIds.has(c.row.id)) &&
-          !(isMoneyRow(c) && cardIds.has(c.row.card_id)),
+          !(
+            c.kind === "upsert" &&
+            c.table === "cards" &&
+            cardIds.has(c.row.id)
+          ) && !(isMoneyRow(c) && cardIds.has(c.row.card_id)),
       );
     }
     if (change.kind === "delete" && change.table === "cards") {
@@ -84,7 +92,8 @@ export class Outbox {
           return { ...c, row: { ...c.row, card_id: newId } } as Change;
         }
         if (c.table !== "cards") return c;
-        if (c.kind === "upsert" && c.row.id === oldId) return { ...c, row: { ...c.row, id: newId } };
+        if (c.kind === "upsert" && c.row.id === oldId)
+          return { ...c, row: { ...c.row, id: newId } };
         if (c.kind === "delete" && c.id === oldId) return { ...c, id: newId };
         return c;
       }),

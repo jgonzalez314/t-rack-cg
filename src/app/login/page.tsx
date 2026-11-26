@@ -74,7 +74,9 @@ export default function LoginPage() {
             type="password"
             required
             minLength={6}
-            autoComplete={mode === "signin" ? "current-password" : "new-password"}
+            autoComplete={
+              mode === "signin" ? "current-password" : "new-password"
+            }
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className={inputClass}
@@ -84,12 +86,12 @@ export default function LoginPage() {
         {error && <p className="text-sm text-neg">{error}</p>}
         {notice && <p className="text-sm text-pos">{notice}</p>}
 
-        <button
-          type="submit"
-          disabled={busy}
-          className={`${buttonClass} mt-2`}
-        >
-          {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
+        <button type="submit" disabled={busy} className={`${buttonClass} mt-2`}>
+          {busy
+            ? "Please wait…"
+            : mode === "signin"
+              ? "Sign in"
+              : "Create account"}
         </button>
       </form>
 

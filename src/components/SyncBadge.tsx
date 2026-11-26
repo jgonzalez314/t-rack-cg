@@ -4,7 +4,9 @@ import type { SyncStatus } from "@/lib/data/use-collection";
 
 const changes = (n: number) => (n === 1 ? "1 change" : `${n} changes`);
 
-function label(status: SyncStatus): { text: string; tone: string; dot: string } | null {
+function label(
+  status: SyncStatus,
+): { text: string; tone: string; dot: string } | null {
   switch (status.state) {
     case "local":
       return null;
@@ -17,7 +19,11 @@ function label(status: SyncStatus): { text: string; tone: string; dot: string } 
         dot: "bg-warn",
       };
     case "syncing":
-      return { text: "Syncing…", tone: "border-line bg-surface text-ink-soft", dot: "bg-accent animate-pulse" };
+      return {
+        text: "Syncing…",
+        tone: "border-line bg-surface text-ink-soft",
+        dot: "bg-accent animate-pulse",
+      };
     case "pending":
       return {
         text: `${changes(status.pending)} waiting to sync.`,
@@ -26,7 +32,9 @@ function label(status: SyncStatus): { text: string; tone: string; dot: string } 
       };
     case "synced":
       return {
-        text: status.at ? `Synced ${new Date(status.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : "Synced",
+        text: status.at
+          ? `Synced ${new Date(status.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+          : "Synced",
         tone: "border-line bg-surface text-ink-soft",
         dot: "bg-pos",
       };
@@ -39,7 +47,13 @@ function label(status: SyncStatus): { text: string; tone: string; dot: string } 
   }
 }
 
-export function SyncBadge({ status, onRetry }: { status: SyncStatus; onRetry: () => void }) {
+export function SyncBadge({
+  status,
+  onRetry,
+}: {
+  status: SyncStatus;
+  onRetry: () => void;
+}) {
   const l = label(status);
   if (!l) return null;
   return (
@@ -52,11 +66,18 @@ export function SyncBadge({ status, onRetry }: { status: SyncStatus; onRetry: ()
       } ${l.tone}`}
     >
       <span className="flex items-center gap-2">
-        <span aria-hidden className={`h-[7px] w-[7px] shrink-0 rounded-full ${l.dot}`} />
+        <span
+          aria-hidden
+          className={`h-[7px] w-[7px] shrink-0 rounded-full ${l.dot}`}
+        />
         {l.text}
       </span>
       {status.state === "error" && (
-        <button type="button" onClick={onRetry} className="shrink-0 font-medium underline">
+        <button
+          type="button"
+          onClick={onRetry}
+          className="shrink-0 font-medium underline"
+        >
           Retry
         </button>
       )}

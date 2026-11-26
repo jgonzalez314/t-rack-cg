@@ -38,18 +38,35 @@ export function FolderList() {
           {folders.length > 0 && <ExportButton store={store} />}
         </div>
         {folders.length === 0 ? (
-          <p className={`${cardClass} text-muted`}>No folders yet. Create one below to start adding cards.</p>
+          <p className={`${cardClass} text-muted`}>
+            No folders yet. Create one below to start adding cards.
+          </p>
         ) : (
           <ul className="overflow-hidden rounded-2xl bg-surface shadow-tile">
             {folders.map((f) => (
-              <li key={f.id} className="border-t border-divider first:border-t-0">
-                <Link href={`/folder?id=${f.id}`} className="flex items-center gap-3 px-4 py-3 active:bg-sunken">
-                  <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-lg text-accent">
+              <li
+                key={f.id}
+                className="border-t border-divider first:border-t-0"
+              >
+                <Link
+                  href={`/folder?id=${f.id}`}
+                  className="flex items-center gap-3 px-4 py-3 active:bg-sunken"
+                >
+                  <span
+                    aria-hidden
+                    className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-lg text-accent"
+                  >
                     ▦
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[15px] font-semibold">{f.name}</span>
-                    {f.description && <span className="block truncate text-[13px] text-muted">{f.description}</span>}
+                    <span className="block truncate text-[15px] font-semibold">
+                      {f.name}
+                    </span>
+                    {f.description && (
+                      <span className="block truncate text-[13px] text-muted">
+                        {f.description}
+                      </span>
+                    )}
                   </span>
                   <span className="shrink-0 text-[13px] text-muted tabular-nums">
                     {counts[f.id] ?? 0} {counts[f.id] === 1 ? "card" : "cards"}
@@ -64,7 +81,11 @@ export function FolderList() {
         )}
       </div>
 
-      <form onSubmit={create} className={`${cardClass} flex flex-col gap-2.5 py-4`} aria-label="New folder">
+      <form
+        onSubmit={create}
+        className={`${cardClass} flex flex-col gap-2.5 py-4`}
+        aria-label="New folder"
+      >
         <h2 className="text-[17px] font-semibold">New folder</h2>
         <input
           aria-label="Folder name"

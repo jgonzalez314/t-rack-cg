@@ -37,12 +37,16 @@ export interface PriceLookup {
 }
 
 /** Splits "4/102" into a number the API knows ("4") and the set size (102). */
-export function parseCardNumber(input: string): { number: string; total: number | null } {
+export function parseCardNumber(input: string): {
+  number: string;
+  total: number | null;
+} {
   const [rawNumber, rawTotal] = input.trim().replace(/^#/, "").split("/");
   let number = (rawNumber ?? "").trim();
   // The API stores "4", not "004". Leave numbers like "TG01" alone.
   if (/^\d+$/.test(number)) number = String(Number(number));
-  const total = rawTotal && /^\d+$/.test(rawTotal.trim()) ? Number(rawTotal) : null;
+  const total =
+    rawTotal && /^\d+$/.test(rawTotal.trim()) ? Number(rawTotal) : null;
   return { number, total };
 }
 
@@ -55,13 +59,19 @@ export function buildQuery(name: string, cardNumber: string): string {
   return parts.join(" ");
 }
 
-type ApiPrice = Partial<Record<"low" | "mid" | "high" | "market", number | null>>;
+type ApiPrice = Partial<
+  Record<"low" | "mid" | "high" | "market", number | null>
+>;
 interface ApiCard {
   id: string;
   name: string;
   number: string;
   set?: { name?: string; printedTotal?: number; releaseDate?: string };
-  tcgplayer?: { url?: string; updatedAt?: string; prices?: Record<string, ApiPrice> };
+  tcgplayer?: {
+    url?: string;
+    updatedAt?: string;
+    prices?: Record<string, ApiPrice>;
+  };
 }
 
 /** Only https links to TCGplayer, so a bad API answer can't link anywhere else. */
@@ -72,13 +82,16 @@ export function safeTcgplayerUrl(v: unknown): string | null {
     const host = u.hostname.toLowerCase();
     const trusted = ["tcgplayer.com", "tcgplayer.pxf.io", "pokemontcg.io"];
     if (u.protocol !== "https:") return null;
-    return trusted.some((d) => host === d || host.endsWith(`.${d}`)) ? u.href : null;
+    return trusted.some((d) => host === d || host.endsWith(`.${d}`))
+      ? u.href
+      : null;
   } catch {
     return null;
   }
 }
 
-const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+const num = (v: unknown) =>
+  typeof v === "number" && Number.isFinite(v) ? v : null;
 const isoDate = (d?: string) => (d ? d.replaceAll("/", "-") : null);
 
 /**
@@ -91,7 +104,12 @@ export function toMatches(cards: ApiCard[], cardNumber: string): PriceMatch[] {
     .map((c): PriceMatch => {
       const prices: Record<string, PrintingPrice> = {};
       for (const [printing, p] of Object.entries(c.tcgplayer?.prices ?? {})) {
-        prices[printing] = { low: num(p.low), mid: num(p.mid), high: num(p.high), market: num(p.market) };
+        prices[printing] = {
+          low: num(p.low),
+          mid: num(p.mid),
+          high: num(p.high),
+          market: num(p.market),
+        };
       }
       return {
         id: c.id,
@@ -107,13 +125,22 @@ export function toMatches(cards: ApiCard[], cardNumber: string): PriceMatch[] {
     })
     .filter((m) => Object.keys(m.prices).length > 0);
 
-  const score = (m: PriceMatch) => (total !== null && m.setTotal === total ? 1 : 0);
+  const score = (m: PriceMatch) =>
+    total !== null && m.setTotal === total ? 1 : 0;
   return matches.sort(
-    (a, b) => score(b) - score(a) || (b.releaseDate ?? "").localeCompare(a.releaseDate ?? ""),
+    (a, b) =>
+      score(b) - score(a) ||
+      (b.releaseDate ?? "").localeCompare(a.releaseDate ?? ""),
   );
 }
 
-const PRINTING_ORDER = ["holofoil", "normal", "1stEditionHolofoil", "unlimitedHolofoil", "reverseHolofoil"];
+const PRINTING_ORDER = [
+  "holofoil",
+  "normal",
+  "1stEditionHolofoil",
+  "unlimitedHolofoil",
+  "reverseHolofoil",
+];
 
 /** Printings in a sensible order: the main printing first, reverse holo after. */
 export function sortPrintings(prices: Record<string, PrintingPrice>): string[] {
@@ -121,7 +148,9 @@ export function sortPrintings(prices: Record<string, PrintingPrice>): string[] {
     const i = PRINTING_ORDER.indexOf(p);
     return i === -1 ? PRINTING_ORDER.length : i;
   };
-  return Object.keys(prices).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+  return Object.keys(prices).sort(
+    (a, b) => rank(a) - rank(b) || a.localeCompare(b),
+  );
 }
 
 /** "reverseHolofoil" -> "Reverse Holofoil", "1stEditionHolofoil" -> "1st Edition Holofoil". */
@@ -153,7 +182,10 @@ export function basePrice(p: PrintingPrice | undefined): number | null {
   return p.market ?? p.mid ?? null;
 }
 
-export function suggestedPrice(p: PrintingPrice | undefined, condition: Condition): number | null {
+export function suggestedPrice(
+  p: PrintingPrice | undefined,
+  condition: Condition,
+): number | null {
   const base = basePrice(p);
   if (base === null) return null;
   return Math.round(base * CONDITION_FACTOR[condition] * 100) / 100;
