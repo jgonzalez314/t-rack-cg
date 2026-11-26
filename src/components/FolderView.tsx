@@ -11,6 +11,7 @@ import {
   type Condition,
   type GradingCompany,
 } from "@/lib/data/types";
+import { CardEditForm } from "./CardEditForm";
 import { CardMoney, CardTotals, money } from "./CardMoney";
 import { ExportButton } from "./ExportButton";
 import { SuggestedPrice } from "./SuggestedPrice";
@@ -45,6 +46,7 @@ export function FolderView() {
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [openCard, setOpenCard] = useState<string | null>(null);
+  const [editCard, setEditCard] = useState<string | null>(null);
   const [prices, setPrices] = useState<Record<string, number | null>>({});
   const onPrice = useCallback(
     (cardId: string, price: number | null) =>
@@ -202,15 +204,36 @@ export function FolderView() {
                       )}
                     </span>
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => run((s) => s.deleteCard(c.id))}
-                    className={`shrink-0 text-sm ${dangerLinkClass}`}
-                    aria-label={`Remove ${c.name}`}
-                  >
-                    Remove
-                  </button>
+                  <span className="flex shrink-0 gap-3 text-sm">
+                    <button
+                      type="button"
+                      aria-expanded={editCard === c.id}
+                      onClick={() =>
+                        setEditCard(editCard === c.id ? null : c.id)
+                      }
+                      className={linkClass}
+                      aria-label={`Edit ${c.name}`}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => run((s) => s.deleteCard(c.id))}
+                      className={dangerLinkClass}
+                      aria-label={`Remove ${c.name}`}
+                    >
+                      Remove
+                    </button>
+                  </span>
                 </div>
+                {editCard === c.id && (
+                  <CardEditForm
+                    store={store}
+                    card={c}
+                    run={run}
+                    onDone={() => setEditCard(null)}
+                  />
+                )}
                 {c.type === "raw" && (
                   <SuggestedPrice card={c} onPrice={onPrice} />
                 )}

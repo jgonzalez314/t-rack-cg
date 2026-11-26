@@ -141,6 +141,40 @@ beforeEach(() => {
   server = new FakeServer();
 });
 
+describe("editing a card entry", () => {
+  it("syncs an edit made offline to the server and other devices", async () => {
+    const phone = device("phone", server);
+    const laptop = device("laptop", server);
+    const folder = phone.store.createFolder({ name: "Binder" });
+    const card = phone.store.addCard(charizard(folder.id));
+    await phone.sync();
+    await laptop.sync();
+
+    server.online = false;
+    phone.store.updateCard(card.id, {
+      type: "slab",
+      name: "Charizard Holo",
+      grading_company: "PSA",
+      grade: 10,
+      cert_number: "777",
+    });
+    expect((await phone.sync()).status).toBe("offline");
+
+    server.online = true;
+    expect((await phone.sync()).status).toBe("synced");
+    expect(server.cards.get(card.id)).toMatchObject({
+      type: "slab",
+      name: "Charizard Holo",
+      condition: null,
+      cert_number: "777",
+    });
+    await laptop.sync();
+    expect(laptop.store.listCardSummaries(folder.id)).toEqual([
+      expect.objectContaining({ id: card.id, name: "Charizard Holo" }),
+    ]);
+  });
+});
+
 describe("offline buys and sells", () => {
   it("syncs purchases and sales made offline, and pulls them on another device", async () => {
     const phone = device("phone", server);

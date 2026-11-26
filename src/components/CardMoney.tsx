@@ -73,6 +73,7 @@ export function CardMoney({
   const purchases = store.listPurchases(card.id);
   const sales = store.listSales(card.id);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
   const { sellPriceSource } = useSettings();
   const useTcgplayer = card.type === "raw" && sellPriceSource === "tcgplayer";
 
@@ -107,6 +108,31 @@ export function CardMoney({
         onDelete={(id) =>
           setError(run((s) => s.deletePurchase(id)).error ?? null)
         }
+        editing={editing}
+        onEdit={(id) => {
+          setError(null);
+          setEditing(id);
+        }}
+        renderEdit={(row) => (
+          <EntryForm
+            kind="buy"
+            initial={row}
+            onCancel={() => setEditing(null)}
+            onSubmit={(v) => {
+              const r = run((s) =>
+                s.updatePurchase(row.id, {
+                  buy_date: v.date,
+                  buy_price: v.price,
+                  buy_percentage: v.percent,
+                  quantity: v.quantity,
+                }),
+              );
+              setError(r.error ?? null);
+              if (!r.error) setEditing(null);
+              return !r.error;
+            }}
+          />
+        )}
       />
 
       <EntryForm
@@ -154,6 +180,31 @@ export function CardMoney({
           quantity: s.sell_quantity,
         }))}
         onDelete={(id) => setError(run((s) => s.deleteSale(id)).error ?? null)}
+        editing={editing}
+        onEdit={(id) => {
+          setError(null);
+          setEditing(id);
+        }}
+        renderEdit={(row) => (
+          <EntryForm
+            kind="sell"
+            initial={row}
+            onCancel={() => setEditing(null)}
+            onSubmit={(v) => {
+              const r = run((s) =>
+                s.updateSale(row.id, {
+                  sell_date: v.date,
+                  sell_price: v.price,
+                  sell_percentage: v.percent,
+                  sell_quantity: v.quantity,
+                }),
+              );
+              setError(r.error ?? null);
+              if (!r.error) setEditing(null);
+              return !r.error;
+            }}
+          />
+        )}
       />
       {error && <p className="text-sm text-neg">{error}</p>}
     </div>
@@ -167,23 +218,32 @@ function EntryForm({
   onSubmit,
   autoPrice,
   setting,
+  initial,
+  onCancel,
 }: {
   kind: "buy" | "sell";
   onSubmit: (v: Entry) => boolean;
   /** When set, the price field is filled with this (null: price not known yet). */
   autoPrice?: number | null;
   setting?: React.ReactNode;
+  /** Editing an existing buy or sell: its current values. */
+  initial?: Entry;
+  onCancel?: () => void;
 }) {
-  const [date, setDate] = useState(today);
-  const [price, setPrice] = useState("");
+  const [date, setDate] = useState(initial?.date ?? today);
+  const [price, setPrice] = useState(initial ? String(initial.price) : "");
   const autoText = autoPrice == null ? "" : autoPrice.toFixed(2);
   // Fill the price when the setting is turned on or the TCGplayer price
   // changes. The field can still be edited for one sale.
   useEffect(() => {
     if (autoText) setPrice(autoText);
   }, [autoText]);
-  const [percent, setPercent] = useState("100");
-  const [quantity, setQuantity] = useState("1");
+  const [percent, setPercent] = useState(
+    initial ? String(initial.percent) : "100",
+  );
+  const [quantity, setQuantity] = useState(
+    initial ? String(initial.quantity) : "1",
+  );
   const verb = kind === "buy" ? "Buy" : "Sell";
   const each = (Number(price) || 0) * ((Number(percent) || 0) / 100);
   const listing = kind === "sell" && quantity !== "" && Number(quantity) === 0;
@@ -191,7 +251,7 @@ function EntryForm({
 
   return (
     <form
-      aria-label={`Add ${kind}`}
+      aria-label={initial ? `Edit ${kind}` : `Add ${kind}`}
       onSubmit={(e) => {
         e.preventDefault();
         const ok = onSubmit({
@@ -200,14 +260,16 @@ function EntryForm({
           percent: Number(percent),
           quantity: Number(quantity),
         });
-        if (ok) {
+        if (ok && !initial) {
           setPrice(autoText);
           setQuantity("1");
         }
       }}
       className="flex flex-col gap-2"
     >
-      <h4 className="text-[15px] font-semibold">Add a {kind}</h4>
+      <h4 className="text-[15px] font-semibold">
+        {initial ? `Edit ${kind}` : `Add a ${kind}`}
+      </h4>
       {setting}
       {autoPrice === null && (
         <p className="text-xs text-muted">
@@ -274,8 +336,17 @@ function EntryForm({
               : "border border-line bg-surface text-ink"
           }`}
         >
-          {listing ? "Add listing" : `Add ${kind}`}
+          {initial ? "Save" : listing ? "Add listing" : `Add ${kind}`}
         </button>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink"
+          >
+            Cancel
+          </button>
+        )}
         <span className="text-sm text-muted tabular-nums">
           {listing
             ? `Asking: ${money(each)} each`
@@ -286,16 +357,25 @@ function EntryForm({
   );
 }
 
+type Row = Entry & { id: string };
+
 function EntryList({
   title,
   empty,
   rows,
   onDelete,
+  editing,
+  onEdit,
+  renderEdit,
 }: {
   title: string;
   empty: string;
-  rows: (Entry & { id: string })[];
+  rows: Row[];
   onDelete: (id: string) => void;
+  /** The id of the row being edited, if any. */
+  editing: string | null;
+  onEdit: (id: string) => void;
+  renderEdit: (row: Row) => React.ReactNode;
 }) {
   return (
     <div>
@@ -304,46 +384,64 @@ function EntryList({
         <p className="mt-1 text-sm text-muted">{empty}</p>
       ) : (
         <ul className="mt-1 flex flex-col divide-y divide-divider text-sm">
-          {rows.map((r) => (
-            <li key={r.id} className="flex items-center gap-2.5 py-2">
-              <span
-                aria-hidden
-                className={`w-10 shrink-0 rounded-md py-0.5 text-center text-[10.5px] font-bold ${
-                  title === "Buys"
-                    ? "bg-accent-soft text-accent"
+          {rows.map((r) =>
+            editing === r.id ? (
+              <li key={r.id} className="py-2">
+                {renderEdit(r)}
+              </li>
+            ) : (
+              <li key={r.id} className="flex items-center gap-2.5 py-2">
+                <span
+                  aria-hidden
+                  className={`w-10 shrink-0 rounded-md py-0.5 text-center text-[10.5px] font-bold ${
+                    title === "Buys"
+                      ? "bg-accent-soft text-accent"
+                      : r.quantity === 0
+                        ? "bg-sunken text-ink-soft"
+                        : "bg-pos-soft text-pos"
+                  }`}
+                >
+                  {title === "Buys"
+                    ? "BUY"
                     : r.quantity === 0
-                      ? "bg-sunken text-ink-soft"
-                      : "bg-pos-soft text-pos"
-                }`}
-              >
-                {title === "Buys" ? "BUY" : r.quantity === 0 ? "LIST" : "SELL"}
-              </span>
-              {r.quantity === 0 ? (
-                <span className="min-w-0 flex-1 tabular-nums text-ink-soft">
-                  {r.date} · Listed, not sold · {money(r.price)} at {r.percent}%
-                  ={" "}
-                  <span className="font-semibold text-ink">
-                    {money((r.price * r.percent) / 100)} each
-                  </span>
+                      ? "LIST"
+                      : "SELL"}
                 </span>
-              ) : (
-                <span className="min-w-0 flex-1 tabular-nums text-ink-soft">
-                  {r.date} · {r.quantity} × {money(r.price)} at {r.percent}% ={" "}
-                  <span className="font-semibold text-ink">
-                    {money((r.quantity * r.price * r.percent) / 100)}
+                {r.quantity === 0 ? (
+                  <span className="min-w-0 flex-1 tabular-nums text-ink-soft">
+                    {r.date} · Listed, not sold · {money(r.price)} at{" "}
+                    {r.percent}% ={" "}
+                    <span className="font-semibold text-ink">
+                      {money((r.price * r.percent) / 100)} each
+                    </span>
                   </span>
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={() => onDelete(r.id)}
-                className="shrink-0 font-medium text-neg"
-                aria-label={`Delete ${title.toLowerCase().slice(0, -1)} from ${r.date}`}
-              >
-                Delete
-              </button>
-            </li>
-          ))}
+                ) : (
+                  <span className="min-w-0 flex-1 tabular-nums text-ink-soft">
+                    {r.date} · {r.quantity} × {money(r.price)} at {r.percent}% ={" "}
+                    <span className="font-semibold text-ink">
+                      {money((r.quantity * r.price * r.percent) / 100)}
+                    </span>
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onEdit(r.id)}
+                  className="shrink-0 font-medium text-accent"
+                  aria-label={`Edit ${title.toLowerCase().slice(0, -1)} from ${r.date}`}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDelete(r.id)}
+                  className="shrink-0 font-medium text-neg"
+                  aria-label={`Delete ${title.toLowerCase().slice(0, -1)} from ${r.date}`}
+                >
+                  Delete
+                </button>
+              </li>
+            ),
+          )}
         </ul>
       )}
     </div>
