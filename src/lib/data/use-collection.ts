@@ -6,8 +6,9 @@
 // connection.
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { isLocalMode } from "@/lib/config";
+import { dataBackend, isLocalMode } from "@/lib/config";
 import { createClient } from "@/lib/supabase/client";
+import { httpBackend } from "./http-backend";
 import { LocalStore, LocalStoreError, STORAGE_KEY } from "./local-store";
 import { OUTBOX_KEY, Outbox } from "./outbox";
 import {
@@ -85,7 +86,10 @@ async function runSync() {
       const result = await syncNow({
         store: c.store,
         outbox,
-        backend: supabaseBackend(supabase),
+        backend:
+          dataBackend === "dynamodb"
+            ? httpBackend()
+            : supabaseBackend(supabase),
         storage: window.localStorage,
         userId: data.session.user.id,
       });

@@ -1,0 +1,52 @@
+# T-rack-CG data table for DynamoDB, plus an IAM user policy that can only
+# reach this table. Deploy with:
+#   aws cloudformation deploy --stack-name t-rack-cg-data \
+#     --template-file aws/dynamodb-table.yaml --capabilities CAPABILITY_IAM
+#
+# One table holds everything. Each user's items share the partition key
+# USER#<supabase user id>; the sort key says what the item is:
+#   FOLDER#<id>, CARD#<id>, PURCHASE#<id>, SALE#<id>, and UNIQ#<card key>
+#   (which card owns a raw card / slab cert in a folder).
+AWSTemplateFormatVersion: "2010-09-09"
+Description: T-rack-CG folders, cards, purchases and sales
+
+Resources:
+  DataTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: pk, AttributeType: S }
+        - { AttributeName: sk, AttributeType: S }
+      KeySchema:
+        - { AttributeName: pk, KeyType: HASH }
+        - { AttributeName: sk, KeyType: RANGE }
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+
+  AppPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: What the T-rack-CG server needs, on this table only
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:Query
+              - dynamodb:PutItem
+              - dynamodb:DeleteItem
+              - dynamodb:ConditionCheckItem
+              - dynamodb:BatchWriteItem
+            Resource: !GetAtt DataTable.Arn
+
+Outputs:
+  TableName:
+    Value: !Ref DataTable
+  PolicyArn:
+    Value: !Ref AppPolicy

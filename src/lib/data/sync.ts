@@ -5,6 +5,7 @@
 // can be made with no connection. Sync runs whenever the device is online.
 
 import type { Card, Folder, Purchase, Sale } from "./types";
+import { dataBackend } from "@/lib/config";
 import { CACHE_KEY, PICK_KEY } from "@/lib/pricing/cache";
 import {
   STORAGE_KEY,
@@ -15,7 +16,13 @@ import {
 } from "./local-store";
 import { OUTBOX_KEY, type Outbox } from "./outbox";
 
-export const SYNC_STATE_KEY = "t-rack-cg:sync:v1";
+// Kept apart per backend, so the first sync after switching to DynamoDB
+// uploads everything saved on this device instead of replacing it with the
+// new, empty table.
+export const SYNC_STATE_KEY =
+  dataBackend === "dynamodb"
+    ? "t-rack-cg:sync:dynamodb:v1"
+    : "t-rack-cg:sync:v1";
 /** The id of the account this device's saved data belongs to. */
 export const OWNER_KEY = "t-rack-cg:owner:v1";
 
@@ -204,7 +211,7 @@ type SupabaseLike = {
   };
 };
 
-function toResult(
+export function toResult(
   error: { code?: string; message: string } | null,
 ): BackendResult {
   if (!error) return { ok: true };
