@@ -27,6 +27,13 @@ export interface Card {
   grading_company: GradingCompany | null;
   grade: number | null;
   cert_number: string | null;
+  /**
+   * Where the card sits in its folder's list, set when the cards are
+   * reordered: lower comes first. Cards without one (made before reordering
+   * existed, added since, or moved in from another folder) come after the
+   * ordered ones, by name. Missing in data saved before this field existed.
+   */
+  sort_order?: number | null;
   created_at: string;
   updated_at: string;
 }

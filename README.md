@@ -41,7 +41,8 @@ to `.env.local`.
 2. Open **SQL Editor** and run each file in
    [`supabase/migrations`](supabase/migrations) in order, oldest first:
    paste its contents and click **Run**. (Already set up? Run only the newer
-   ones, such as `20261119000000_sale_listings.sql`.)
+   ones, such as `20261127000000_card_order.sql`, which saves the order
+   you drag cards into.)
 3. Open **Project Settings > API** and copy the **Project URL** and the **anon public** key.
 
 ### 2. Run the app locally

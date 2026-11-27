@@ -71,6 +71,20 @@ const emptyData = (): Data => ({
 });
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * The order of cards in a folder: by sort_order (set by reordering), then
+ * cards with none by name, so folders nobody has reordered stay A to Z.
+ */
+export function byCardOrder(
+  a: Pick<Card, "sort_order" | "name">,
+  b: Pick<Card, "sort_order" | "name">,
+) {
+  const ao = a.sort_order ?? Infinity;
+  const bo = b.sort_order ?? Infinity;
+  if (ao !== bo) return ao < bo ? -1 : 1;
+  return a.name.localeCompare(b.name);
+}
 const norm = (s: string) => s.trim().toLowerCase();
 
 function requireText(value: string, field: string): string {
@@ -263,6 +277,8 @@ export class LocalStore {
       card_number: requireText(input.card_number, "Card number"),
       game: "Pokemon",
       language: "English",
+      // New cards go after the ones the user has put in order.
+      sort_order: null,
       ...this.stamp(),
     };
     const card: Card =
@@ -312,11 +328,15 @@ export class LocalStore {
     const data = this.load();
     const index = data.cards.findIndex((c) => c.id === id);
     if (index < 0) throw new LocalStoreError("Card not found");
+    const old = data.cards[index];
     const updated: Card = {
-      ...data.cards[index],
+      ...old,
       ...changes,
       updated_at: this.now().toISOString(),
     };
+    // Moved to another folder: its place in the old folder means nothing
+    // there, so it goes after that folder's ordered cards.
+    if (updated.folder_id !== old.folder_id) updated.sort_order = null;
     updated.name = requireText(updated.name, "Card name");
     updated.card_number = requireText(updated.card_number, "Card number");
     if (updated.type === "raw") {
@@ -332,6 +352,37 @@ export class LocalStore {
     this.save(data);
     this.onChange({ kind: "upsert", table: "cards", row: updated });
     return updated;
+  }
+
+  /**
+   * Puts a folder's cards in the given order, by id. Cards left out keep
+   * their current order after the listed ones. Only cards whose place
+   * changed are saved, so moving one card up a step touches as few as
+   * possible once a folder has been ordered.
+   * (Dragging a card one place swaps it with its neighbour: two saves.)
+   */
+  reorderCards(folderId: string, orderedIds: string[]) {
+    const data = this.load();
+    const inFolder = data.cards
+      .filter((c) => c.folder_id === folderId)
+      .sort(byCardOrder);
+    const byId = new Map(inFolder.map((c) => [c.id, c]));
+    const listed = [...new Set(orderedIds)].filter((cid) => byId.has(cid));
+    const rest = inFolder.filter((c) => !listed.includes(c.id));
+    const order = [...listed.map((cid) => byId.get(cid)!), ...rest];
+    const t = this.now().toISOString();
+    const changed: Card[] = [];
+    order.forEach((card, i) => {
+      if (card.sort_order === i) return;
+      const index = data.cards.findIndex((c) => c.id === card.id);
+      const updated = { ...card, sort_order: i, updated_at: t };
+      data.cards[index] = updated;
+      changed.push(updated);
+    });
+    if (!changed.length) return;
+    this.save(data);
+    for (const row of changed)
+      this.onChange({ kind: "upsert", table: "cards", row });
   }
 
   deleteCard(id: string) {
@@ -497,13 +548,16 @@ export class LocalStore {
 
   // ---- totals and search --------------------------------------------------
 
-  /** Same numbers as the card_summary view in the database. */
+  /**
+   * Same numbers as the card_summary view in the database. One folder's
+   * cards come in their saved order; all cards come by name.
+   */
   listCardSummaries(folderId?: string): CardSummary[] {
     const data = this.load();
     return data.cards
       .filter((c) => !folderId || c.folder_id === folderId)
       .map((card) => summarize(card, data.purchases, data.sales))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort(folderId ? byCardOrder : (a, b) => a.name.localeCompare(b.name));
   }
 
   /** Finds cards whose name, card number or cert number contains the text. */

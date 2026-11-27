@@ -2,7 +2,7 @@
 // folder, then every card, buy and sell. Everything comes from data saved in
 // this browser, so it works offline.
 
-import { summarize, type Data } from "@/lib/data/local-store";
+import { byCardOrder, summarize, type Data } from "@/lib/data/local-store";
 import type { Card, CardSummary, Folder } from "@/lib/data/types";
 import type { SavedSuggestion } from "@/lib/pricing/cache";
 import {
@@ -133,7 +133,8 @@ export function buildWorkbookSheets(
   const folderName = (c: Card) => folderById.get(c.folder_id)?.name ?? "";
   const byFolderThenCard = (a: CardSummary, b: CardSummary) =>
     folderName(a).localeCompare(folderName(b)) ||
-    a.name.localeCompare(b.name) ||
+    a.folder_id.localeCompare(b.folder_id) ||
+    byCardOrder(a, b) ||
     a.card_number.localeCompare(b.card_number, undefined, { numeric: true }) ||
     cardDetails(a).localeCompare(cardDetails(b));
   cards.sort(byFolderThenCard);
