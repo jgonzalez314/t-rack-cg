@@ -38,6 +38,7 @@ const raw = (folder_id: string, extra: Partial<Card> = {}) => ({
   grading_company: null,
   grade: null,
   cert_number: null,
+  sort_order: null,
   ...stamps,
   ...extra,
 });
@@ -85,6 +86,24 @@ describe("cards", () => {
     const data = await db.fetchAll();
     expect(data.folders).toEqual([{ ...f, updated_at: NOW }]);
     expect(data.cards).toEqual([{ ...c, updated_at: NOW }]);
+  });
+
+  it("saves a card's place in its folder and refuses a bad one", async () => {
+    const { f, c } = await binderWithCard();
+    expect(await db.upsert("cards", { ...c, sort_order: 2 })).toEqual(ok);
+    expect((await db.fetchAll()).cards[0].sort_order).toBe(2);
+    expect(code(await db.upsert("cards", { ...c, sort_order: -1 }))).toBe(
+      "23514",
+    );
+    expect(code(await db.upsert("cards", { ...c, sort_order: 1.5 }))).toBe(
+      "23514",
+    );
+    // Cards saved before reordering existed read back with no place.
+    const old = raw(f.id, { condition: "LP" }) as Record<string, unknown>;
+    delete old.sort_order;
+    expect(await db.upsert("cards", old)).toEqual(ok);
+    const back = (await db.fetchAll()).cards.find((x) => x.id === old.id);
+    expect(back?.sort_order).toBeNull();
   });
 
   it("refuses the same raw card twice in a folder, ignoring case, and finds the first one", async () => {

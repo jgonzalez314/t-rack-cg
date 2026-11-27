@@ -16,6 +16,7 @@ import { CardMoney, CardTotals, money } from "./CardMoney";
 import { ExportButton } from "./ExportButton";
 import { SuggestedPrice } from "./SuggestedPrice";
 import { SyncBadge } from "./SyncBadge";
+import { useDragReorder } from "./useDragReorder";
 import {
   backButtonClass,
   buttonClass,
@@ -58,6 +59,12 @@ export function FolderView() {
     [],
   );
 
+  const cards = store?.getFolder(id) ? store.listCardSummaries(id) : [];
+  const { drag, itemProps, offset } = useDragReorder(
+    cards.map((c) => c.id),
+    (order) => run((s) => s.reorderCards(id, order)),
+  );
+
   // When the add form opens, bring it into view and put the cursor in the
   // name field so the card can be typed right away.
   useEffect(() => {
@@ -80,7 +87,6 @@ export function FolderView() {
     );
   }
 
-  const cards = store.listCardSummaries(folder.id);
   const totals = cards.reduce(
     (t, c) => ({
       cost: t.cost + c.total_cost,
@@ -201,18 +207,39 @@ export function FolderView() {
             <ExportButton store={store} folderId={folder.id} />
           )}
         </div>
+        {cards.length > 1 && (
+          <p className="px-1 text-[13px] text-muted">
+            Press and hold a card, then drag it to change the order.
+          </p>
+        )}
         {cards.length === 0 ? (
           <p className={`${cardClass} text-muted`}>
             No cards in this folder yet. Tap + Add card to add one.
           </p>
         ) : (
           <ul className="flex flex-col gap-3">
-            {cards.map((c) => (
-              <li key={c.id} className={cardClass}>
+            {cards.map((c, i) => (
+              <li
+                key={c.id}
+                {...itemProps(c.id)}
+                style={
+                  drag ? { transform: `translateY(${offset(i)}px)` } : undefined
+                }
+                className={`${cardClass} relative select-none [-webkit-touch-callout:none] [&_input]:select-text ${
+                  drag?.id === c.id
+                    ? "z-10 scale-[1.02] cursor-grabbing shadow-float ring-2 ring-accent/40"
+                    : drag
+                      ? "transition-transform duration-150"
+                      : ""
+                }`}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <span className="min-w-0">
-                    <span className="block truncate text-[16px] font-semibold">
-                      {c.name}
+                    <span className="flex items-center gap-1.5">
+                      {cards.length > 1 && <Grip />}
+                      <span className="block truncate text-[16px] font-semibold">
+                        {c.name}
+                      </span>
                     </span>
                     <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[13px] text-muted">
                       #{c.card_number}
@@ -412,5 +439,23 @@ export function FolderView() {
         </button>
       )}
     </section>
+  );
+}
+
+/** Dotted handle beside a card's name, hinting that it can be dragged. */
+function Grip() {
+  return (
+    <svg
+      viewBox="0 0 10 16"
+      width="8"
+      height="13"
+      fill="currentColor"
+      className="shrink-0 text-faint"
+      aria-hidden="true"
+    >
+      {[2, 8, 14].map((y) =>
+        [2, 8].map((x) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.5" />),
+      )}
+    </svg>
   );
 }

@@ -3,6 +3,7 @@ import {
   LocalStore,
   LocalStoreError,
   STORAGE_KEY,
+  type Change,
   type KeyValueStorage,
 } from "./local-store";
 
@@ -216,6 +217,101 @@ describe("cards", () => {
     store.deleteFolder(folderId);
     const saved = JSON.parse(storage.map.get(STORAGE_KEY)!);
     expect(saved).toEqual({ folders: [], cards: [], purchases: [], sales: [] });
+  });
+});
+
+describe("card order in a folder", () => {
+  const add = (name: string, folder = folderId) =>
+    store.addCard({
+      type: "raw",
+      folder_id: folder,
+      name,
+      card_number: "1",
+      condition: "NM",
+    });
+  const names = () => store.listCardSummaries(folderId).map((c) => c.name);
+
+  it("lists cards A to Z until they are reordered", () => {
+    add("Pikachu");
+    add("Bulbasaur");
+    add("Mew");
+    expect(names()).toEqual(["Bulbasaur", "Mew", "Pikachu"]);
+  });
+
+  it("saves and queues a new order, then only the cards that moved", () => {
+    const changes: Change[] = [];
+    let n = 0;
+    store = new LocalStore(
+      storage,
+      () => new Date("2026-11-27T00:00:00Z"),
+      () => `new-${++n}`,
+      (c) => changes.push(c),
+    );
+    add("Bulbasaur");
+    add("Mew");
+    const pika = add("Pikachu");
+    changes.length = 0;
+
+    const ids = () => store.listCardSummaries(folderId).map((c) => c.id);
+    const [bulba, mew] = ids();
+    store.reorderCards(folderId, [bulba, pika.id, mew]);
+    expect(names()).toEqual(["Bulbasaur", "Pikachu", "Mew"]);
+    // The first reorder gives every card a place.
+    expect(changes).toHaveLength(3);
+    expect(
+      changes.every((c) => c.kind === "upsert" && c.table === "cards"),
+    ).toBe(true);
+
+    changes.length = 0;
+    store.reorderCards(folderId, [pika.id, bulba, mew]);
+    expect(names()).toEqual(["Pikachu", "Bulbasaur", "Mew"]);
+    // After that, only the two cards that swapped places are saved.
+    expect(changes).toHaveLength(2);
+
+    // Same order again: nothing to save.
+    changes.length = 0;
+    store.reorderCards(folderId, ids());
+    expect(changes).toHaveLength(0);
+
+    // A fresh store reading the same browser storage sees the same order.
+    expect(
+      new LocalStore(storage).listCardSummaries(folderId).map((c) => c.name),
+    ).toEqual(["Pikachu", "Bulbasaur", "Mew"]);
+  });
+
+  it("puts cards in a given order, with any left out after", () => {
+    const a = add("A");
+    const b = add("B");
+    const c = add("C");
+    store.reorderCards(folderId, [c.id, a.id]);
+    expect(names()).toEqual(["C", "A", "B"]);
+    store.reorderCards(folderId, [b.id, "not-a-card"]);
+    expect(names()).toEqual(["B", "C", "A"]);
+  });
+
+  it("adds new cards and cards moved in from another folder at the end", () => {
+    const other = store.createFolder({ name: "Other" });
+    const zap = add("Zapdos");
+    const abra = add("Abra");
+    store.reorderCards(folderId, [zap.id, abra.id]);
+    add("Mew");
+    const moved = add("Charmander", other.id);
+    store.updateCard(moved.id, { folder_id: folderId });
+    expect(names()).toEqual(["Zapdos", "Abra", "Charmander", "Mew"]);
+    // Editing a card in place keeps its spot.
+    store.updateCard(abra.id, { name: "Alakazam" });
+    expect(names()[1]).toBe("Alakazam");
+  });
+
+  it("does not touch other folders", () => {
+    const other = store.createFolder({ name: "Other" });
+    const x = add("X", other.id);
+    add("A");
+    add("B");
+    store.reorderCards(folderId, []);
+    expect(store.allData().cards.find((c) => c.id === x.id)?.sort_order).toBe(
+      null,
+    );
   });
 });
 

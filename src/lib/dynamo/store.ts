@@ -65,6 +65,7 @@ const FIELDS = {
     "grading_company",
     "grade",
     "cert_number",
+    "sort_order",
     "created_at",
     "updated_at",
   ],
@@ -160,6 +161,14 @@ function cleanFolder(row: Record<string, unknown>, now: string): Folder {
   };
 }
 
+function sortOrder(v: unknown): number | null {
+  if (v === null || v === undefined) return null;
+  const n = Number(v);
+  if (!Number.isInteger(n) || n < 0 || n > 1e9)
+    throw broken("Card order must be a whole number of 0 or more");
+  return n;
+}
+
 function cleanCard(row: Record<string, unknown>, now: string): Card {
   const base = {
     id: id(row.id, "Card"),
@@ -174,6 +183,7 @@ function cleanCard(row: Record<string, unknown>, now: string): Card {
       typeof row.language === "string" && row.language
         ? row.language.slice(0, 50)
         : "English",
+    sort_order: sortOrder(row.sort_order),
     created_at: stamp(row.created_at, now),
     updated_at: now,
   };

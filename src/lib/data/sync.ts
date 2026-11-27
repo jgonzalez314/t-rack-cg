@@ -271,7 +271,7 @@ export function supabaseBackend(client: SupabaseLike): SyncBackend {
         client
           .from("cards")
           .select(
-            `id, folder_id, type, name, card_number, game, language, condition, grading_company, grade, cert_number, ${stamps}`,
+            `id, folder_id, type, name, card_number, game, language, condition, grading_company, grade, cert_number, sort_order, ${stamps}`,
           ),
         client
           .from("purchases")
