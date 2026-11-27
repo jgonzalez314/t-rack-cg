@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useCollection } from "@/lib/data/use-collection";
 import {
   CONDITIONS,
@@ -48,12 +48,23 @@ export function FolderView() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [openCard, setOpenCard] = useState<string | null>(null);
   const [editCard, setEditCard] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const addFormRef = useRef<HTMLFormElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
   const [prices, setPrices] = useState<Record<string, number | null>>({});
   const onPrice = useCallback(
     (cardId: string, price: number | null) =>
       setPrices((p) => (p[cardId] === price ? p : { ...p, [cardId]: price })),
     [],
   );
+
+  // When the add form opens, bring it into view and put the cursor in the
+  // name field so the card can be typed right away.
+  useEffect(() => {
+    if (!adding) return;
+    addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    nameRef.current?.focus({ preventScroll: true });
+  }, [adding]);
 
   if (!store) return <p className="mt-6 text-muted">Loading…</p>;
 
@@ -112,6 +123,18 @@ export function FolderView() {
     setName("");
     setCardNumber("");
     setCert("");
+    setAdding(false);
+  }
+
+  function openAddForm() {
+    setError(null);
+    setNotice(null);
+    setAdding(true);
+  }
+
+  function closeAddForm() {
+    setError(null);
+    setAdding(false);
   }
 
   function removeFolder() {
@@ -180,7 +203,7 @@ export function FolderView() {
         </div>
         {cards.length === 0 ? (
           <p className={`${cardClass} text-muted`}>
-            No cards in this folder yet. Add one below.
+            No cards in this folder yet. Tap + Add card to add one.
           </p>
         ) : (
           <ul className="flex flex-col gap-3">
@@ -261,95 +284,113 @@ export function FolderView() {
         )}
       </div>
 
-      <form
-        id="add-card"
-        onSubmit={add}
-        className={`${cardClass} flex scroll-mt-4 flex-col gap-2.5 py-4`}
-        aria-label="Add card"
-      >
-        <h3 className="text-[17px] font-semibold">Add a card</h3>
-        <div className={segmentClass} role="radiogroup" aria-label="Card type">
-          {(["raw", "slab"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              role="radio"
-              aria-checked={type === t}
-              onClick={() => setType(t)}
-              className={segmentItemClass(type === t)}
-            >
-              {t === "raw" ? "Raw" : "Slab (graded)"}
-            </button>
-          ))}
-        </div>
-        <input
-          aria-label="Card name"
-          placeholder="Card name, like Charizard"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className={inputClass}
-        />
-        <input
-          aria-label="Card number"
-          placeholder="Card number, like 4/102"
-          value={cardNumber}
-          onChange={(e) => setCardNumber(e.target.value)}
-          className={inputClass}
-        />
-        {type === "raw" ? (
-          <label className={fieldLabel}>
-            Condition
-            <select
-              value={condition}
-              onChange={(e) => setCondition(e.target.value as Condition)}
-              className={inputClass}
-            >
-              {CONDITIONS.map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </select>
-          </label>
-        ) : (
-          <div className="grid grid-cols-2 gap-2">
+      {notice && <p className="px-1 text-sm text-muted">{notice}</p>}
+
+      {adding && (
+        <form
+          id="add-card"
+          ref={addFormRef}
+          onSubmit={add}
+          className={`${cardClass} flex scroll-mt-4 flex-col gap-2.5 py-4`}
+          aria-label="Add card"
+        >
+          <h3 className="text-[17px] font-semibold">Add a card</h3>
+          <div
+            className={segmentClass}
+            role="radiogroup"
+            aria-label="Card type"
+          >
+            {(["raw", "slab"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                role="radio"
+                aria-checked={type === t}
+                onClick={() => setType(t)}
+                className={segmentItemClass(type === t)}
+              >
+                {t === "raw" ? "Raw" : "Slab (graded)"}
+              </button>
+            ))}
+          </div>
+          <input
+            ref={nameRef}
+            aria-label="Card name"
+            placeholder="Card name, like Charizard"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className={inputClass}
+          />
+          <input
+            aria-label="Card number"
+            placeholder="Card number, like 4/102"
+            value={cardNumber}
+            onChange={(e) => setCardNumber(e.target.value)}
+            className={inputClass}
+          />
+          {type === "raw" ? (
             <label className={fieldLabel}>
-              Grading company
+              Condition
               <select
-                value={company}
-                onChange={(e) => setCompany(e.target.value as GradingCompany)}
+                value={condition}
+                onChange={(e) => setCondition(e.target.value as Condition)}
                 className={inputClass}
               >
-                {GRADING_COMPANIES.map((c) => (
+                {CONDITIONS.map((c) => (
                   <option key={c}>{c}</option>
                 ))}
               </select>
             </label>
-            <label className={fieldLabel}>
-              Grade
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              <label className={fieldLabel}>
+                Grading company
+                <select
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value as GradingCompany)}
+                  className={inputClass}
+                >
+                  {GRADING_COMPANIES.map((c) => (
+                    <option key={c}>{c}</option>
+                  ))}
+                </select>
+              </label>
+              <label className={fieldLabel}>
+                Grade
+                <input
+                  type="number"
+                  min={1}
+                  max={10}
+                  step={0.5}
+                  value={grade}
+                  onChange={(e) => setGrade(e.target.value)}
+                  className={inputClass}
+                />
+              </label>
               <input
-                type="number"
-                min={1}
-                max={10}
-                step={0.5}
-                value={grade}
-                onChange={(e) => setGrade(e.target.value)}
-                className={inputClass}
+                aria-label="Cert number"
+                placeholder="Cert number"
+                value={cert}
+                onChange={(e) => setCert(e.target.value)}
+                className={`${inputClass} col-span-2`}
               />
-            </label>
-            <input
-              aria-label="Cert number"
-              placeholder="Cert number"
-              value={cert}
-              onChange={(e) => setCert(e.target.value)}
-              className={`${inputClass} col-span-2`}
-            />
+            </div>
+          )}
+          {error && <p className="text-sm text-neg">{error}</p>}
+          <div className="flex items-center gap-4">
+            <button type="submit" className={buttonClass}>
+              Add to folder
+            </button>
+            <button
+              type="button"
+              onClick={closeAddForm}
+              className={`text-sm ${linkClass}`}
+            >
+              Cancel
+            </button>
           </div>
-        )}
-        {error && <p className="text-sm text-neg">{error}</p>}
-        {notice && <p className="text-sm text-muted">{notice}</p>}
-        <button type="submit" className={`${buttonClass} self-start`}>
-          Add to folder
-        </button>
-      </form>
+        </form>
+      )}
 
       <button
         type="button"
@@ -361,12 +402,15 @@ export function FolderView() {
           : "Delete folder"}
       </button>
 
-      <a
-        href="#add-card"
-        className="fixed right-4 bottom-[max(1.25rem,env(safe-area-inset-bottom))] rounded-full bg-accent px-5 py-3 text-[15px] font-semibold text-accent-ink shadow-float"
-      >
-        + Add card
-      </a>
+      {!adding && (
+        <button
+          type="button"
+          onClick={openAddForm}
+          className="fixed right-4 bottom-[max(1.25rem,env(safe-area-inset-bottom))] rounded-full bg-accent px-5 py-3 text-[15px] font-semibold text-accent-ink shadow-float"
+        >
+          + Add card
+        </button>
+      )}
     </section>
   );
 }
