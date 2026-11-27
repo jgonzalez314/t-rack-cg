@@ -2,7 +2,7 @@
 // folder, then every card, buy and sell. Everything comes from data saved in
 // this browser, so it works offline.
 
-import { byCardOrder, summarize, type Data } from "@/lib/data/local-store";
+import { bySortOrder, summarize, type Data } from "@/lib/data/local-store";
 import type { Card, CardSummary, Folder } from "@/lib/data/types";
 import type { SavedSuggestion } from "@/lib/pricing/cache";
 import {
@@ -124,17 +124,18 @@ export function buildWorkbookSheets(
   const now = options.now ?? new Date();
   const folders = data.folders
     .filter((f) => !options.folderId || f.id === options.folderId)
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort(bySortOrder);
   const folderById = new Map(folders.map((f) => [f.id, f]));
   const cards: CardSummary[] = data.cards
     .filter((c) => folderById.has(c.folder_id))
     .map((c) => summarize(c, data.purchases, data.sales));
   const cardById = new Map(cards.map((c) => [c.id, c]));
   const folderName = (c: Card) => folderById.get(c.folder_id)?.name ?? "";
+  const folderIndex = new Map(folders.map((f, i) => [f.id, i]));
+  const folderRank = (c: Card) => folderIndex.get(c.folder_id) ?? 0;
   const byFolderThenCard = (a: CardSummary, b: CardSummary) =>
-    folderName(a).localeCompare(folderName(b)) ||
-    a.folder_id.localeCompare(b.folder_id) ||
-    byCardOrder(a, b) ||
+    folderRank(a) - folderRank(b) ||
+    bySortOrder(a, b) ||
     a.card_number.localeCompare(b.card_number, undefined, { numeric: true }) ||
     cardDetails(a).localeCompare(cardDetails(b));
   cards.sort(byFolderThenCard);

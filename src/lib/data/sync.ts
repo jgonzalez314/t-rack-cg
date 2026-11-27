@@ -267,7 +267,9 @@ export function supabaseBackend(client: SupabaseLike): SyncBackend {
     async fetchAll() {
       const stamps = "created_at, updated_at";
       const results = await Promise.all([
-        client.from("folders").select(`id, name, description, ${stamps}`),
+        client
+          .from("folders")
+          .select(`id, name, description, sort_order, ${stamps}`),
         client
           .from("cards")
           .select(

@@ -220,6 +220,45 @@ describe("cards", () => {
   });
 });
 
+describe("folder order", () => {
+  const names = () => store.listFolders().map((f) => f.name);
+
+  it("lists folders A to Z until reordered, then in the saved order", () => {
+    const changes: Change[] = [];
+    let n = 0;
+    store = new LocalStore(
+      storage,
+      () => new Date("2026-11-27T00:00:00Z"),
+      () => `f-${++n}`,
+      (c) => changes.push(c),
+    );
+    const trade = store.createFolder({ name: "Trade" });
+    const alpha = store.createFolder({ name: "Alpha" });
+    expect(names()).toEqual(["Alpha", "Binder", "Trade"]);
+
+    changes.length = 0;
+    store.reorderFolders([trade.id, folderId, alpha.id]);
+    expect(names()).toEqual(["Trade", "Binder", "Alpha"]);
+    expect(changes).toHaveLength(3);
+    expect(changes.every((c) => c.table === "folders")).toBe(true);
+
+    // Swapping two only saves those two.
+    changes.length = 0;
+    store.reorderFolders([folderId, trade.id, alpha.id]);
+    expect(names()).toEqual(["Binder", "Trade", "Alpha"]);
+    expect(changes).toHaveLength(2);
+
+    // New folders go at the end; the order survives a reload.
+    store.createFolder({ name: "Aaa" });
+    expect(new LocalStore(storage).listFolders().map((f) => f.name)).toEqual([
+      "Binder",
+      "Trade",
+      "Alpha",
+      "Aaa",
+    ]);
+  });
+});
+
 describe("card order in a folder", () => {
   const add = (name: string, folder = folderId) =>
     store.addCard({

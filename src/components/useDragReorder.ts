@@ -15,12 +15,19 @@ import { useEffect, useRef, useState } from "react";
 const HOLD_MS = { touch: 300, mouse: 250 };
 /** Moving further than this before the hold ends cancels it (a scroll or a text selection). */
 const SLOP_PX = { touch: 10, mouse: 6 };
-/** Space between items, matching the list's gap-3. */
+/** Space between items by default, matching a list's gap-3. */
 const GAP_PX = 12;
 /** Distance from the screen edge where dragging scrolls the page. */
 const EDGE_PX = 80;
 /** Fields where a press means typing or picking, never dragging. */
 const NO_DRAG = "input, select, textarea, label, a, [contenteditable]";
+
+export interface DragOptions {
+  /** Space between items, in pixels. */
+  gap?: number;
+  /** Where a press never starts a drag (a CSS selector). */
+  noDrag?: string;
+}
 
 type Kind = "touch" | "mouse";
 
@@ -57,6 +64,7 @@ interface Session {
 export function useDragReorder(
   ids: string[],
   onDrop: (orderedIds: string[]) => void,
+  options: DragOptions = {},
 ) {
   const [drag, setDrag] = useState<DragState | null>(null);
   const latest = useRef({ ids, onDrop });
@@ -64,7 +72,12 @@ export function useDragReorder(
     latest.current = { ids, onDrop };
   });
   // Made once, so the window listeners it adds can be removed again.
-  const [ctl] = useState(() => controller(latest, setDrag));
+  const [ctl] = useState(() =>
+    controller(latest, setDrag, {
+      gap: options.gap ?? GAP_PX,
+      noDrag: options.noDrag ?? NO_DRAG,
+    }),
+  );
   // Stop a drag that is still going if the list goes away.
   useEffect(() => () => ctl.end(false), [ctl]);
 
@@ -86,6 +99,7 @@ function controller(
     onDrop: (orderedIds: string[]) => void;
   }>,
   setDrag: (d: DragState | null) => void,
+  options: Required<DragOptions>,
 ) {
   const items = new Map<string, HTMLElement>();
   let session: Session | null = null;
@@ -156,7 +170,7 @@ function controller(
     const rect = el.getBoundingClientRect();
     s.top = rect.top + window.scrollY;
     s.height = rect.height;
-    s.shift = rect.height + GAP_PX;
+    s.shift = rect.height + options.gap;
     // Clear any text the hold started to select.
     window.getSelection()?.removeAllRanges();
     if (s.kind === "touch") navigator.vibrate?.(10);
@@ -247,7 +261,7 @@ function controller(
   }
 
   const blocked = (target: EventTarget | null) =>
-    target instanceof Element && target.closest(NO_DRAG) !== null;
+    target instanceof Element && target.closest(options.noDrag) !== null;
 
   /** Props for each draggable item. */
   function itemProps(id: string) {

@@ -73,12 +73,13 @@ const emptyData = (): Data => ({
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /**
- * The order of cards in a folder: by sort_order (set by reordering), then
- * cards with none by name, so folders nobody has reordered stay A to Z.
+ * The order of folders, and of cards in a folder: by sort_order (set by
+ * reordering), then those with none by name, so lists nobody has reordered
+ * stay A to Z.
  */
-export function byCardOrder(
-  a: Pick<Card, "sort_order" | "name">,
-  b: Pick<Card, "sort_order" | "name">,
+export function bySortOrder(
+  a: { sort_order?: number | null; name: string },
+  b: { sort_order?: number | null; name: string },
 ) {
   const ao = a.sort_order ?? Infinity;
   const bo = b.sort_order ?? Infinity;
@@ -149,9 +150,34 @@ export class LocalStore {
   // ---- folders ------------------------------------------------------------
 
   listFolders(): Folder[] {
-    return [...this.load().folders].sort((a, b) =>
-      a.name.localeCompare(b.name),
-    );
+    return [...this.load().folders].sort(bySortOrder);
+  }
+
+  /**
+   * Puts the folders in the given order, by id. Folders left out keep their
+   * current order after the listed ones. Only folders whose place changed
+   * are saved.
+   */
+  reorderFolders(orderedIds: string[]) {
+    const data = this.load();
+    const current = [...data.folders].sort(bySortOrder);
+    const byId = new Map(current.map((f) => [f.id, f]));
+    const listed = [...new Set(orderedIds)].filter((fid) => byId.has(fid));
+    const rest = current.filter((f) => !listed.includes(f.id));
+    const order = [...listed.map((fid) => byId.get(fid)!), ...rest];
+    const t = this.now().toISOString();
+    const changed: Folder[] = [];
+    order.forEach((folder, i) => {
+      if (folder.sort_order === i) return;
+      const index = data.folders.findIndex((f) => f.id === folder.id);
+      const updated = { ...folder, sort_order: i, updated_at: t };
+      data.folders[index] = updated;
+      changed.push(updated);
+    });
+    if (!changed.length) return;
+    this.save(data);
+    for (const row of changed)
+      this.onChange({ kind: "upsert", table: "folders", row });
   }
 
   createFolder(input: NewFolder): Folder {
@@ -160,6 +186,8 @@ export class LocalStore {
       id: this.newId(),
       name: requireText(input.name, "Folder name"),
       description: input.description?.trim() || null,
+      // New folders go after the ones the user has put in order.
+      sort_order: null,
       ...this.stamp(),
     };
     data.folders.push(folder);
@@ -365,7 +393,7 @@ export class LocalStore {
     const data = this.load();
     const inFolder = data.cards
       .filter((c) => c.folder_id === folderId)
-      .sort(byCardOrder);
+      .sort(bySortOrder);
     const byId = new Map(inFolder.map((c) => [c.id, c]));
     const listed = [...new Set(orderedIds)].filter((cid) => byId.has(cid));
     const rest = inFolder.filter((c) => !listed.includes(c.id));
@@ -557,7 +585,7 @@ export class LocalStore {
     return data.cards
       .filter((c) => !folderId || c.folder_id === folderId)
       .map((card) => summarize(card, data.purchases, data.sales))
-      .sort(folderId ? byCardOrder : (a, b) => a.name.localeCompare(b.name));
+      .sort(folderId ? bySortOrder : (a, b) => a.name.localeCompare(b.name));
   }
 
   /** Finds cards whose name, card number or cert number contains the text. */
