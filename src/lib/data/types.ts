@@ -11,6 +11,12 @@ export interface Folder {
   id: string;
   name: string;
   description: string | null;
+  /**
+   * Where the folder sits in the folder list, set when folders are
+   * reordered: lower comes first. Folders without one come after, by name.
+   * Missing in data saved before this field existed.
+   */
+  sort_order?: number | null;
   created_at: string;
   updated_at: string;
 }

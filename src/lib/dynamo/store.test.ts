@@ -24,6 +24,7 @@ const folder = (id = randomUUID()) => ({
   id,
   name: "Binder",
   description: null,
+  sort_order: null,
   ...stamps,
 });
 const raw = (folder_id: string, extra: Partial<Card> = {}) => ({
@@ -86,6 +87,15 @@ describe("cards", () => {
     const data = await db.fetchAll();
     expect(data.folders).toEqual([{ ...f, updated_at: NOW }]);
     expect(data.cards).toEqual([{ ...c, updated_at: NOW }]);
+  });
+
+  it("saves a folder's place in the list", async () => {
+    const { f } = await binderWithCard();
+    expect(await db.upsert("folders", { ...f, sort_order: 0 })).toEqual(ok);
+    expect((await db.fetchAll()).folders[0].sort_order).toBe(0);
+    expect(code(await db.upsert("folders", { ...f, sort_order: -2 }))).toBe(
+      "23514",
+    );
   });
 
   it("saves a card's place in its folder and refuses a bad one", async () => {
@@ -193,6 +203,7 @@ describe("cards", () => {
       "description",
       "id",
       "name",
+      "sort_order",
       "updated_at",
     ]);
   });

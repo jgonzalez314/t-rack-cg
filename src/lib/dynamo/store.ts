@@ -52,7 +52,14 @@ const PREFIX: Record<Table, string> = {
 const sk = (table: Table, id: string) => PREFIX[table] + id;
 
 const FIELDS = {
-  folders: ["id", "name", "description", "created_at", "updated_at"],
+  folders: [
+    "id",
+    "name",
+    "description",
+    "sort_order",
+    "created_at",
+    "updated_at",
+  ],
   cards: [
     "id",
     "folder_id",
@@ -156,6 +163,7 @@ function cleanFolder(row: Record<string, unknown>, now: string): Folder {
     id: id(row.id, "Folder"),
     name: text(row.name, "Folder name", 200),
     description: optionalText(row.description, "Description"),
+    sort_order: sortOrder(row.sort_order),
     created_at: stamp(row.created_at, now),
     updated_at: now,
   };
@@ -165,7 +173,7 @@ function sortOrder(v: unknown): number | null {
   if (v === null || v === undefined) return null;
   const n = Number(v);
   if (!Number.isInteger(n) || n < 0 || n > 1e9)
-    throw broken("Card order must be a whole number of 0 or more");
+    throw broken("Order must be a whole number of 0 or more");
   return n;
 }
 

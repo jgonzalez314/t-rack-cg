@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useCollection } from "@/lib/data/use-collection";
 import { ExportButton } from "./ExportButton";
 import { SyncBadge } from "./SyncBadge";
+import { useDragReorder } from "./useDragReorder";
 import { buttonClass, cardClass, inputClass, labelClass } from "./ui";
 
 export function FolderList() {
@@ -12,10 +13,17 @@ export function FolderList() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const folders = store ? store.listFolders() : [];
+  // Rows sit flush in one tile, so there is no gap between them. Each row is
+  // a link, so a press on it may start a drag (only form fields may not).
+  const { drag, itemProps, offset } = useDragReorder(
+    folders.map((f) => f.id),
+    (order) => run((s) => s.reorderFolders(order)),
+    { gap: 0, noDrag: "input, select, textarea, label, [contenteditable]" },
+  );
 
   if (!store) return <p className="mt-6 text-muted">Loading…</p>;
 
-  const folders = store.listFolders();
   const counts = store.countCardsByFolder();
 
   function create(e: React.FormEvent) {
@@ -37,20 +45,38 @@ export function FolderList() {
           <h2 className={labelClass}>Folders</h2>
           {folders.length > 0 && <ExportButton store={store} />}
         </div>
+        {folders.length > 1 && (
+          <p className="px-1 text-[13px] text-muted">
+            Press and hold a folder, then drag it to change the order.
+          </p>
+        )}
         {folders.length === 0 ? (
           <p className={`${cardClass} text-muted`}>
             No folders yet. Create one below to start adding cards.
           </p>
         ) : (
-          <ul className="overflow-hidden rounded-2xl bg-surface shadow-tile">
-            {folders.map((f) => (
+          <ul
+            className={`rounded-2xl bg-surface shadow-tile ${drag ? "" : "overflow-hidden"}`}
+          >
+            {folders.map((f, i) => (
               <li
                 key={f.id}
-                className="border-t border-divider first:border-t-0"
+                {...itemProps(f.id)}
+                style={
+                  drag ? { transform: `translateY(${offset(i)}px)` } : undefined
+                }
+                className={`relative border-t border-divider select-none first:rounded-t-2xl first:border-t-0 last:rounded-b-2xl [-webkit-touch-callout:none] ${
+                  drag?.id === f.id
+                    ? "z-10 scale-[1.02] cursor-grabbing rounded-2xl border-transparent bg-surface shadow-float ring-2 ring-accent/40"
+                    : drag
+                      ? "bg-surface transition-transform duration-150"
+                      : ""
+                }`}
               >
                 <Link
                   href={`/folder?id=${f.id}`}
-                  className="flex items-center gap-3 px-4 py-3 active:bg-sunken"
+                  draggable={false}
+                  className="flex items-center gap-3 px-4 py-3 [-webkit-touch-callout:none] active:bg-sunken"
                 >
                   <span
                     aria-hidden
